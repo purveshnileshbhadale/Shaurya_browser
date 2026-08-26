@@ -186,12 +186,13 @@ reimplemented), the AI assistant, notes, private tabs and encrypted local
 storage. Blocking runs in `shouldInterceptRequest`, WebView's equivalent of the
 desktop hook.
 
-**Building the APK.** The Android SDK ships only from `dl.google.com`, which is
-not reachable from every environment. The reliable path is CI:
+**The APK is built by CI and compiles clean** — build, unit tests and lint all
+green on the first run. The Android SDK ships only from `dl.google.com`, which
+is not reachable from every environment, so CI is the reliable path:
 
 ```
 Push, or run the "Android APK" workflow manually
-  → download the `aether-debug-apk` artifact
+  → download the `aether-debug-apk` artifact  (~17 MB, debug-signed)
 ```
 
 Locally, with the SDK installed:

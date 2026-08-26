@@ -180,13 +180,17 @@ one that admits them.
 
 **No compiled Chromium fork.** Covered in §1.
 
-**The Android APK is not built in this repository's CI-less form.** The Android
-SDK ships only from `dl.google.com`, which was unreachable from the environment
-this was built in, so the APK could not be compiled or run here. What is
-committed: the complete Kotlin/Compose source, a working Gradle setup with the
-wrapper, and a GitHub Actions workflow that produces a downloadable APK. The
-desktop build was compiled, launched and screenshotted; **the Android build was
-not**, and may need compile fixes on first run — that is the honest status.
+**The Android APK is built by CI, not in this environment.** The Android SDK
+ships only from `dl.google.com`, which was unreachable from the machine this was
+written on, so the APK could not be compiled *here*. The committed workflow does
+compile it, and did so cleanly on the first run — `assembleDebug`,
+`testDebugUnitTest` and `lintDebug` all green, producing a ~17 MB debug-signed
+APK.
+
+The remaining honest gap: the desktop build was compiled, **launched and
+screenshotted**; the Android APK has been compiled but **not run on a device or
+emulator**, so its runtime behaviour is unverified in a way the desktop's is
+not.
 
 **No hosted services.** The VPN, sync and AI all point at configurable
 endpoints. The code that talks to them is real and complete; the servers are
