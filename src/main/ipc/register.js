@@ -118,6 +118,24 @@ function registerHandlers(c) {
         matchCase: Boolean(p.matchCase),
       });
     },
+    /**
+     * Scroll the page. Used by gamepad navigation (spec §4), where the stick
+     * produces a continuous delta rather than a wheel event.
+     *
+     * `scrollBy` through the page's own scripting context, because a
+     * synthesised wheel event would be visible to the page and could be
+     * cancelled by a site that hijacks scrolling.
+     */
+    scrollBy: (p, ctx) => {
+      const tab = tabOf(ctx, p?.id);
+      if (!tab?.webContents) return false;
+      const dx = Number(p?.dx) || 0;
+      const dy = Number(p?.dy) || 0;
+      tab.webContents.executeJavaScript(
+        `window.scrollBy(${dx}, ${dy})`, true,
+      ).catch(() => {});
+      return true;
+    },
     stopFind: (p, ctx) => {
       tabOf(ctx, p.id)?.webContents?.stopFindInPage(p?.keepSelection ? 'keepSelection' : 'clearSelection');
       return true;

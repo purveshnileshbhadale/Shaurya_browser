@@ -35,6 +35,12 @@ const PAGE_ROOTS = {
   markdown: 'markdown',
   reader: 'reader',
   error: 'error',
+  // Mode pages (spec §4, §5, §6). `hud` and `teleprompter` render inside
+  // always-on-top windows rather than tabs; `blocked` is what the study
+  // blocker redirects a cancelled navigation to.
+  hud: 'hud',
+  teleprompter: 'teleprompter',
+  blocked: 'blocked',
 };
 
 const MIME = {
@@ -188,6 +194,11 @@ async function handleApi(pathname, url, deps) {
 
   try {
     switch (pathname) {
+      // The blocked interstitial's countdown. Read-only and tiny, so the
+      // page does not need the privileged IPC surface just to show a clock.
+      case '/study-timer':
+        return json(deps.student ? deps.student.timerState() : { running: false });
+
       case '/version':
         return json({
           aether: require(paths.appPath('package.json')).version,

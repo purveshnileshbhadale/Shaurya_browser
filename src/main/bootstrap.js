@@ -343,6 +343,17 @@ function wireCrossServiceEvents(container) {
   const { performance, recorder, streams, gameFeeds, deals, ping, overlay,
     creator, student, ghost, docker, mocking, snippets, graphql, terminal } = container;
 
+  // A page reports its own frame rate — the only honest source, since the
+  // main process cannot see a renderer's vsync. Attributed to the tab that
+  // sent it rather than to anything in the payload, so one page cannot post
+  // frame stats on another's behalf.
+  container.content.on('frameStats', (payload, { sender }) => {
+    const found = windowManager.locateTab(sender?.id);
+    if (found?.tab) performance.recordFrameStats(found.tab.id, payload);
+  });
+
+  // Sampling is off until something needs it, so an ordinary browsing
+  // session never runs the rAF loop at all.
   performance.on('metrics', (m) => windowManager.broadcast('perf:metrics', m));
   performance.on('tabUsage', (rows) => windowManager.broadcast('perf:tabUsage', rows));
   performance.on('turbo', (s) => windowManager.broadcast('perf:turbo', s));

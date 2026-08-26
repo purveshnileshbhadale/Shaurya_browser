@@ -20,7 +20,7 @@ const INVOKE = [
   'tabs.navigate', 'tabs.goBack', 'tabs.goForward', 'tabs.reload',
   'tabs.stop', 'tabs.duplicate', 'tabs.mute', 'tabs.pin', 'tabs.hibernate',
   'tabs.wake', 'tabs.move', 'tabs.zoom', 'tabs.captureThumbnail',
-  'tabs.findInPage', 'tabs.stopFind',
+  'tabs.findInPage', 'tabs.stopFind', 'tabs.scrollBy',
 
   // --- tab groups / workspaces -----------------------------------------
   'groups.list', 'groups.create', 'groups.update', 'groups.remove',

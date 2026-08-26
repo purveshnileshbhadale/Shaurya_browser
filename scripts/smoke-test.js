@@ -537,6 +537,41 @@ app.whenReady().then(async () => {
     return 'programmer + gamer features in one mode';
   });
 
+  await check('every internal mode page loads and renders', async () => {
+    // These are only reachable at runtime — the HUD and teleprompter live in
+    // always-on-top windows and the blocker page is a redirect target — so
+    // nothing else would catch a missing route or a typo in a script tag.
+    const pages = [
+      ['aether://hud', '#hud'],
+      ['aether://teleprompter', '#script'],
+      ['aether://blocked?reason=focus&host=example.com', '#headline'],
+    ];
+
+    const tab = win.tabs.create({ url: 'aether://start', background: true });
+    const rendered = [];
+
+    for (const [url, selector] of pages) {
+      await tab.navigate(url);
+      await until(() => tab.webContents && !tab.webContents.isLoading(),
+        { label: `${url} to load` });
+      assert(!tab.error, `${url} failed: ${JSON.stringify(tab.error)}`);
+
+      const found = await tab.webContents.executeJavaScript(
+        `document.querySelector(${JSON.stringify(selector)}) ? 'ok' : 'missing'`);
+      assert(found === 'ok', `${url} did not render ${selector}`);
+      rendered.push(url.split('?')[0].replace('aether://', ''));
+    }
+
+    // The blocker page must name the host it blocked, or the user cannot
+    // tell which site stopped loading.
+    const host = await tab.webContents.executeJavaScript(
+      'document.getElementById("host")?.textContent || ""');
+    assert(host === 'example.com', `the blocked page said "${host}"`);
+
+    win.tabs.close(tab.id);
+    return rendered.join(', ');
+  });
+
   await check('the mode switcher tracks the active mode and its panels', async () => {
     const read = () => win.shellView.webContents.executeJavaScript(`
       (() => {

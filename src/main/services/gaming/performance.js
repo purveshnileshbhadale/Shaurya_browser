@@ -84,6 +84,7 @@ class PerformanceService extends EventEmitter {
     if (this._timer) return;
     this._timer = setInterval(() => this._sample(), SAMPLE_MS);
     this._timer.unref?.();
+    this._setPageSampling(true);
     this._sample();
   }
 
@@ -91,6 +92,26 @@ class PerformanceService extends EventEmitter {
     if (!this._timer) return;
     clearInterval(this._timer);
     this._timer = null;
+    this._setPageSampling(false);
+    this._frameStats.clear();
+  }
+
+  /**
+   * Turn the pages' own frame counters on or off.
+   *
+   * Measuring FPS costs a `requestAnimationFrame` loop in every page, which
+   * is small but not free — and it would be running in a hundred tabs of a
+   * user who never opens the overlay. So it is armed only while something is
+   * watching, and disarmed the moment nothing is.
+   */
+  _setPageSampling(enabled) {
+    for (const win of this.windowManager?.list() || []) {
+      for (const tab of win.tabs.list()) {
+        try {
+          tab.webContents?.send('aether:frame-stats', enabled);
+        } catch { /* a view mid-teardown */ }
+      }
+    }
   }
 
   /** A page reported its own frame timing. */

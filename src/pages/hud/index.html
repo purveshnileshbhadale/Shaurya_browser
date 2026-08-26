@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Aether HUD</title>
+  <!--
+    The hardware overlay (spec §4).
+
+    Rendered in a transparent, click-through, always-on-top window, so the
+    stylesheet's job is to stay legible over arbitrary game content while
+    occupying as few pixels as possible. Everything is tabular-numeric and
+    fixed-width: a readout whose width changes as the numbers change is
+    distracting in peripheral vision, which is the only place this is ever
+    read from.
+  -->
+  <style>
+    :root { color-scheme: dark; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      -webkit-user-select: none;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    #hud {
+      margin: 6px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(8, 10, 14, var(--opacity, 0.85));
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      color: #e6edf3;
+      font-size: 11px;
+      line-height: 1.6;
+      /* A subtle shadow keeps the panel readable over a bright scene without
+         needing a heavier background. */
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+    }
+
+    .row { display: flex; justify-content: space-between; gap: 14px; }
+    .label { color: #8b98a8; }
+    .value { font-variant-numeric: tabular-nums; }
+
+    /* Colour only on the value, and only at thresholds worth reacting to.
+       A HUD that is always red is a HUD nobody looks at. */
+    .value[data-level="warn"] { color: #fbbf24; }
+    .value[data-level="bad"]  { color: #f87171; }
+    .value[data-level="good"] { color: #4ade80; }
+
+    .bar {
+      height: 2px;
+      margin-top: 5px;
+      border-radius: 1px;
+      background: rgba(148, 163, 184, 0.18);
+      overflow: hidden;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: currentColor;
+      transition: width 240ms linear;
+    }
+
+    #empty { color: #8b98a8; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <div id="hud"><div id="empty">waiting for the first sample…</div></div>
+  <script src="hud.js"></script>
+</body>
+</html>

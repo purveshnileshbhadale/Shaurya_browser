@@ -592,12 +592,71 @@ ipcRenderer.on('aether:content-command', async (_event, id, op, payload) => {
 });
 
 // ===========================================================================
+// Frame timing (spec §4 — the FPS readout)
+// ===========================================================================
+
+/**
+ * Measure the page's real frame rate and report it to the main process.
+ *
+ * This has to live here because the main process genuinely cannot observe a
+ * renderer's vsync — there is no Electron or Chromium API that exposes a
+ * tab's frame rate. The page counting its own `requestAnimationFrame`
+ * callbacks is the only honest source, so an overlay showing FPS is showing
+ * a number this loop produced.
+ *
+ * Deliberately cheap and deliberately quiet:
+ *   - only the top frame samples, so a page with twenty iframes reports once;
+ *   - `requestAnimationFrame` stops being called when the tab is hidden, so
+ *     a background tab reports nothing rather than reporting zero, and the
+ *     HUD shows a dash instead of implying the page has stalled;
+ *   - one IPC message per second, not per frame.
+ */
+const frameStats = {
+  frames: 0,
+  windowStart: 0,
+  running: false,
+
+  init() {
+    if (!IS_TOP) return;
+
+    // Only sample while something is watching. The main process turns this on
+    // when the overlay or the per-tab metrics panel needs it, so an ordinary
+    // browsing session pays nothing at all.
+    ipcRenderer.on('aether:frame-stats', (_event, enabled) => {
+      if (enabled && !this.running) this.start();
+      else if (!enabled) this.running = false;
+    });
+  },
+
+  start() {
+    this.running = true;
+    this.frames = 0;
+    this.windowStart = performance.now();
+
+    const step = (now) => {
+      if (!this.running) return;
+      this.frames += 1;
+
+      const elapsed = now - this.windowStart;
+      if (elapsed >= 1000) {
+        notify('frameStats', { fps: (this.frames * 1000) / elapsed });
+        this.frames = 0;
+        this.windowStart = now;
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  },
+};
+
+// ===========================================================================
 // Bootstrap
 // ===========================================================================
 
 cosmetic.init();
 gestures.init();
 autofill.init();
+frameStats.init();
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => cosmetic.scan(), { once: true });

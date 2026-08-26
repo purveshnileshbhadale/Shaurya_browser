@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Teleprompter</title>
+  <!--
+    Teleprompter overlay (spec §5).
+
+    Design constraints that are not obvious until you use one:
+
+    - The read line sits at ~38% from the top, not the middle. Eyes track
+      slightly above centre when reading to camera, and text at dead centre
+      makes the gaze look low on the recording.
+    - Scrolling is continuous, not line-by-line. Stepped scrolling is what
+      makes cheap prompters unusable — the eye loses its place at every jump.
+    - Mirroring is a CSS transform, because half of all prompter rigs use a
+      beam-splitter glass and need the text reversed.
+  -->
+  <style>
+    :root {
+      color-scheme: dark;
+      --size: 34px;
+      --opacity: 0.9;
+    }
+
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: rgba(6, 8, 12, var(--opacity));
+      color: #f1f5f9;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #stage {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* The read line: where the eye should rest. */
+    #guide {
+      position: absolute;
+      top: 38%;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.8), transparent);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    #script {
+      position: absolute;
+      left: 0; right: 0;
+      padding: 0 8%;
+      /* Starts below the read line so the first words scroll up into it. */
+      top: 38%;
+      font-size: var(--size);
+      line-height: 1.5;
+      font-weight: 500;
+      white-space: pre-wrap;
+      will-change: transform;
+    }
+
+    body[data-mirrored="true"] #script { transform: scaleX(-1); }
+
+    #bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.5);
+      font-size: 11px;
+      z-index: 3;
+    }
+
+    button {
+      padding: 3px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 999px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+    button[data-on="true"] { background: #f97316; border-color: #f97316; color: #0b0d10; }
+
+    #wpm { margin-left: auto; color: #94a3b8; font-variant-numeric: tabular-nums; }
+    #empty { padding: 20% 8% 0; color: #94a3b8; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="guide"></div>
+    <div id="script"><div id="empty">No script loaded. Save one from the Creator panel.</div></div>
+  </div>
+
+  <div id="bar">
+    <button id="play">Play</button>
+    <button id="slower">−</button>
+    <button id="faster">+</button>
+    <button id="mirror">Mirror</button>
+    <button id="restart">Restart</button>
+    <span id="wpm">150 wpm</span>
+  </div>
+
+  <script src="teleprompter.js"></script>
+</body>
+</html>

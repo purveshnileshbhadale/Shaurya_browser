@@ -15,6 +15,7 @@ import { createTabStrip } from './components/tabstrip.js';
 import { createToolbar } from './components/toolbar.js';
 import { createPanel } from './components/panels.js';
 import { createModeSwitcher, createQuickActions } from './components/mode-switcher.js';
+import { createGamepadNavigation } from './components/gamepad.js';
 import { prettyAccelerator } from './components/palette.js';
 
 const shell = $('#shell');
@@ -50,6 +51,7 @@ let modeSwitcher = null;
 
     wireShellChrome();
     wireKeyboard();
+    wireGamepad();
     wireEventBridges();
     syncLayout();
 
@@ -334,6 +336,40 @@ function normaliseKey(key) {
   const mapped = map[key] || key;
   return mapped.length === 1 ? mapped.toUpperCase() : mapped;
 }
+
+/**
+ * Gamepad navigation (spec §4).
+ *
+ * Controller commands are mapped onto the same command ids the keyboard
+ * uses, so a remapped button and a remapped chord end up in exactly one
+ * dispatch table — and a command added for the keyboard is immediately
+ * bindable to a button with no extra work.
+ */
+function wireGamepad() {
+  createGamepadNavigation({
+    onCommand: (command) => {
+      const mapped = GAMEPAD_COMMANDS[command];
+      if (mapped) runCommand(mapped);
+      else if (command === 'activate') document.activeElement?.click?.();
+    },
+  });
+}
+
+/** Controller command -> the browser command it runs. */
+const GAMEPAD_COMMANDS = {
+  back: 'nav.back',
+  forward: 'nav.forward',
+  reload: 'nav.reload',
+  palette: 'palette.open',
+  tabNext: 'tab.next',
+  tabPrev: 'tab.previous',
+  newTab: 'tab.new',
+  closeTab: 'tab.close',
+  zoomIn: 'zoom.in',
+  zoomOut: 'zoom.out',
+  turbo: 'turbo.toggle',
+  clip: 'recorder.clip',
+};
 
 /** The single dispatch point for every command in the browser. */
 async function runCommand(id) {
