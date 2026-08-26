@@ -21,6 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    # Needed so the APK can be published to the dist branch below.
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -69,3 +73,43 @@ jobs:
           name: android-lint-report
           path: android/app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+
+      # Actions artifacts are served from an authenticated, short-lived blob
+      # URL that some corporate and sandboxed networks block outright. Mirroring
+      # the APK onto a throwaway branch gives a second retrieval path that is
+      # plain git, so anything able to clone the repository can fetch the
+      # binary.
+      #
+      # The branch is rebuilt from an empty history and force-pushed every run,
+      # so it never accumulates more than the single APK it currently holds.
+      # The file deliberately sits outside android/ so that this push cannot
+      # match the path filter that triggers this workflow.
+      - name: Mirror the APK to the dist branch
+        env:
+          APK: android/app/build/outputs/apk/debug/app-debug.apk
+          REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          set -euo pipefail
+          test -f "$APK"
+
+          work="$(mktemp -d)"
+          mkdir -p "$work/apk"
+          cp "$APK" "$work/apk/aether-debug.apk"
+          printf '%s\n' \
+            '# Aether — debug APK' '' \
+            "Built by the \"Android APK\" workflow from commit \`$GITHUB_SHA\`." '' \
+            '    apk/aether-debug.apk' '' \
+            'Debug-signed, so installing needs "unknown sources" enabled:' '' \
+            '    adb install apk/aether-debug.apk' '' \
+            'This branch is force-pushed on every build and carries no history.' \
+            'It is a distribution convenience, not source. Delete it freely.' \
+            > "$work/README.md"
+
+          cd "$work"
+          git init -q -b dist
+          git add -A
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -q -m "Aether debug APK from ${GITHUB_SHA:0:7}"
+          git push -q --force "$REMOTE" dist:refs/heads/claude/apk-dist
+          echo "APK mirrored to branch claude/apk-dist"
