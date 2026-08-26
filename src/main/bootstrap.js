@@ -12,6 +12,7 @@ const { app, nativeTheme } = require('electron');
 
 const { SettingsService } = require('./services/settings');
 const { FeatureStore } = require('./services/feature-store');
+const { ModeService } = require('./services/modes');
 const { ProfileService } = require('./services/profiles');
 const { AdblockService } = require('./services/adblock');
 const { PrivacyService } = require('./services/privacy');
@@ -60,6 +61,10 @@ async function bootstrap() {
   // ---- foundation ------------------------------------------------------
   container.settings = new SettingsService();
   container.features = new FeatureStore(container.settings);
+  // Constructed immediately after the Feature Store because it installs the
+  // overlay resolver; every `features.enabled()` call below this line is
+  // already mode-aware.
+  container.modes = new ModeService(container.settings, container.features);
   container.ipc = new IpcRouter();
   container.content = new ContentBridge();
   container.profiles = new ProfileService(container.settings, container.features);
@@ -163,6 +168,21 @@ async function bootstrap() {
 
   wireCrossServiceEvents(container);
 
+  // ---- modes -----------------------------------------------------------
+  // A mode switch is a chrome-level event: it changes what the toolbar
+  // offers and how the window looks, and never touches the tab set. That is
+  // why "no restart, no lost tabs" needs no special handling here — there is
+  // simply nothing in this path that could lose one.
+  container.modes.on('changed', (snapshot) => {
+    applyTheme(container);
+    container.windowManager.broadcast('modes:changed', snapshot);
+    // Feature visibility moved, so the Feature Store screen must repaint too.
+    container.windowManager.broadcast('features:changed', {
+      features: container.features.list(),
+      footprint: container.features.footprint(),
+    });
+  });
+
   // ---- theming ---------------------------------------------------------
   applyTheme(container);
   container.settings.on('changed', ({ path }) => {
@@ -201,8 +221,15 @@ function resolvePageUrl(container, webContentsId) {
   return found?.tab?.url;
 }
 
+/**
+ * The native theme follows the *resolved* appearance, so a mode that asks for
+ * a dark chrome also darkens native surfaces (menus, scrollbars, the title
+ * bar overlay) rather than leaving a light frame around a dark window.
+ */
 function applyTheme(container) {
-  const theme = container.settings.get('appearance.theme');
+  const theme = container.modes
+    ? container.modes.appearanceFor().theme
+    : container.settings.get('appearance.theme');
   nativeTheme.themeSource = ['light', 'dark'].includes(theme) ? theme : 'system';
 }
 

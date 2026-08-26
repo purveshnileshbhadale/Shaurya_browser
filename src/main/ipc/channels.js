@@ -49,6 +49,21 @@ const INVOKE = [
   'features.list', 'features.toggle',
   'onboarding.state', 'onboarding.complete',
 
+  // --- modes (spec §2 switcher, §5 custom modes) ------------------------
+  'modes.list', 'modes.active', 'modes.activate', 'modes.create',
+  'modes.update', 'modes.remove', 'modes.duplicate', 'modes.resetOverrides',
+
+  // --- gaming (spec §4) -------------------------------------------------
+  'perf.metrics', 'perf.turbo', 'perf.lowLatency', 'perf.tabUsage',
+  'perf.setTabCap', 'perf.clearTabCap', 'perf.overlay',
+  'recorder.state', 'recorder.start', 'recorder.stop', 'recorder.clip',
+  'recorder.setReplaySeconds', 'recorder.list', 'recorder.reveal',
+  'stream.open', 'stream.close', 'stream.list', 'stream.add', 'stream.remove',
+  'games.library', 'games.presence', 'games.feeds', 'games.addFeed',
+  'games.removeFeed', 'games.refresh',
+  'deals.list', 'deals.watch', 'deals.unwatch', 'deals.refresh',
+  'gamepad.state',
+
   // --- profiles ---------------------------------------------------------
   'profiles.list', 'profiles.create', 'profiles.remove', 'profiles.switch',
   'profiles.update',
@@ -116,6 +131,9 @@ const INVOKE = [
 const SEND = [
   'ui.ready', 'ui.contextMenu', 'ui.dragTab', 'ui.focusAddressBar',
   'ui.log', 'internal.pageEvent',
+  // Frame timing sampled by the page itself; the only honest source of a
+  // real FPS number, since the main process cannot see a renderer's vsync.
+  'internal.frameStats',
 ];
 
 /** Push channels (main -> renderer). */
@@ -124,6 +142,10 @@ const EVENTS = [
   'tabs:favicon', 'tabs:loading', 'tabs:audio', 'tabs:find',
   'groups:changed', 'workspaces:changed', 'layout:changed',
   'settings:changed', 'features:changed', 'profiles:changed',
+  'modes:changed',
+  'perf:metrics', 'perf:tabUsage', 'perf:turbo',
+  'recorder:state', 'recorder:clip',
+  'stream:changed', 'games:changed', 'deals:changed',
   'adblock:count', 'adblock:lists',
   'permissions:prompt', 'permissions:changed',
   'vpn:status', 'vault:status', 'downloads:changed',

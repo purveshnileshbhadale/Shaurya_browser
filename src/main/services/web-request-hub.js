@@ -21,7 +21,14 @@ const log = createLogger('webrequest');
  * spends effort on a request that is about to be cancelled.
  */
 const PRIORITY = {
+  // A site the user has blocked for themselves outranks everything: they
+  // asked not to be able to reach it, and a filter-list decision should not
+  // be able to let it through by answering first.
+  FOCUS_BLOCK: 5,
   ADBLOCK: 10,
+  // Mocking sits directly after blocking so a stubbed endpoint still obeys
+  // the blocker, but is decided before any upgrade or tunnel work.
+  API_MOCK: 15,
   HTTPS_ONLY: 20,
   VPN: 30,
   CORS: 40,

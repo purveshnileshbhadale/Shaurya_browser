@@ -26,7 +26,88 @@ const DEFAULTS = {
     showTabThumbnails: true,
     animations: true,
     roundedCorners: 12,
+    monoUi: false,              // monospace chrome font (Programmer Mode)
+    backgroundFx: 'none',       // none | rgb — animated chrome background
     perProfileTheme: {},        // profileId -> { theme, accent }
+  },
+
+  modes: {
+    active: 'default',          // default | programmer | gamer | <custom id>
+    custom: [],                 // user-built modes; see services/modes.js
+    overrides: {},              // modeId -> { featureId: boolean }
+    lastUsed: {},               // modeId -> timestamp, for switcher ordering
+    rememberPerProfile: false,  // opt-in: each profile remembers its own mode
+    switchAnimation: true,
+  },
+
+  gaming: {
+    turbo: {
+      suspendBackgroundTabs: true,
+      suspendExtensions: true,
+      pauseSync: true,
+      keepAudible: true,        // never suspend a tab that is making sound
+    },
+    overlay: {
+      metrics: ['cpu', 'ram', 'fps'],
+      position: 'top-right',
+      opacity: 0.85,
+      scale: 1,
+    },
+    recorder: {
+      replaySeconds: 30,        // instant-replay ring buffer depth
+      fps: 30,
+      resolution: 1080,
+      directory: '',            // empty = platform videos folder
+      audio: true,
+    },
+    tabCaps: {},                // host -> { cpuPercent, memoryMb }
+    gamepadBindings: {},        // button/axis -> command id
+    pingRegions: [],            // user-added region endpoints
+    streamLayout: 'solo',       // solo | chat | webcam | full
+    streams: [],                // saved Twitch/YouTube channels
+    feeds: [],                  // patch-note RSS sources
+    steam: { apiKey: '', steamId: '' },
+    discordPresence: true,
+    wishlist: [],               // { title, storeIds, targetPrice }
+    dealsCurrency: 'USD',
+  },
+
+  study: {
+    blockList: ['reddit.com', 'x.com', 'twitter.com', 'youtube.com', 'tiktok.com',
+      'instagram.com', 'facebook.com'],
+    siteLimits: {},             // host -> minutes per day
+    usage: { date: '', hosts: {} },
+    citationStyle: 'apa',
+    timerPreset: 'pomodoro',
+    ocrEngine: null,            // pluggable; null means "text layers only"
+    roomUrl: '',
+    roomPinned: false,
+  },
+
+  creator: {
+    brandKits: [],              // { id, name, colours[], fonts[] }
+    activeKit: '',
+    assetSources: { openverse: true, wikimedia: true, pexels: false },
+    pexelsKey: '',
+    scheduleQueue: [],          // { id, platform, when, title, body, assetPath }
+    connectedChannels: [],      // { platform, handle, tokenRef }
+    teleprompter: {
+      speed: 40,                // px per second
+      fontSize: 34,
+      mirrored: false,
+      opacity: 0.9,
+      pedalKey: 'F13',          // most USB pedals emit a spare function key
+    },
+    thumbnailSlots: [],         // two candidate image paths for A/B
+  },
+
+  ghost: {
+    torPerWindow: true,         // Ghost windows route through Tor when able
+    panicScope: 'window',       // window | browser
+    panicPreserveSettings: true,
+    shredPasses: 3,
+    stripOnUpload: true,
+    stripOnDownload: true,
   },
 
   startPage: {
@@ -58,6 +139,8 @@ const DEFAULTS = {
     blockThirdPartyCookies: true,
     doNotSell: true,
     clearOnExit: [],            // e.g. ['cookies','cache']
+    dohProvider: 'system',      // see services/ghost/index.js DOH_PROVIDERS
+    dohUrl: '',
     siteSettings: {},           // host -> { adblock, permissions: {...} }
     defaultPermissions: {
       camera: 'ask', microphone: 'ask', geolocation: 'ask',

@@ -41,6 +41,7 @@ function registerHandlers(c) {
       settings: c.settings.get(),
       features: c.features.list(),
       footprint: c.features.footprint(),
+      modes: c.modes.snapshot(),
       profiles: c.profiles.list(),
       shortcuts: c.shortcuts.list(),
       vault: c.vault.status(),
@@ -253,12 +254,30 @@ function registerHandlers(c) {
     },
   });
 
+  // The switcher itself (spec §2) and the custom-mode builder (spec §5).
+  ipc.handleAll('modes', {
+    list: () => c.modes.snapshot(),
+    active: () => c.modes.active(),
+    activate: (p) => c.modes.activate(p.id),
+    create: (p) => { c.modes.create(p || {}); return c.modes.snapshot(); },
+    update: (p) => { c.modes.update(p.id, p.patch || {}); return c.modes.snapshot(); },
+    remove: (p) => c.modes.remove(p.id),
+    duplicate: (p) => { c.modes.duplicate(p.id, p.name); return c.modes.snapshot(); },
+    resetOverrides: (p) => c.modes.resetOverrides(p?.id),
+  });
+
   ipc.handleAll('onboarding', {
     state: () => c.settings.get('onboarding'),
     complete: (p) => {
-      c.settings.set('onboarding', { completed: true, version: 1, choices: p?.choices || {} });
+      c.settings.set('onboarding', { completed: true, version: 2, choices: p?.choices || {} });
       // Onboarding choices are the user's first configuration pass.
       if (p?.choices) {
+        // The mode goes first: it supplies the overlay that the explicit
+        // feature choices below are then layered on top of, so a user who
+        // picks "gaming" and then unticks the recorder gets both.
+        if (p.choices.mode) {
+          try { c.modes.activate(p.choices.mode); } catch (err) { log.debug(err.message); }
+        }
         for (const [id, enabled] of Object.entries(p.choices.features || {})) {
           try { c.features.toggle(id, enabled); } catch (err) { log.debug(err.message); }
         }
