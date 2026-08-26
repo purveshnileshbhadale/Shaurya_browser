@@ -64,13 +64,15 @@ let active = 'features';
 (async function start() {
   await reload();
   applyTheme();
-  renderNav();
 
   // `aether://settings/#privacy` deep-links to a section, which is what the
-  // command palette uses to jump straight to a setting.
+  // command palette uses to jump straight to a setting. This has to resolve
+  // *before* the first renderNav(), or the sidebar highlights the default
+  // section while the pane shows the linked one.
   const hash = location.hash.replace('#', '');
   if (hash && SECTIONS.some((s) => s.id === hash)) active = hash;
 
+  renderNav();
   await renderSection();
 
   filter.addEventListener('input', () => applyFilter(filter.value.trim().toLowerCase()));

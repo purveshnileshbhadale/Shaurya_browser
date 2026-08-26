@@ -12,7 +12,7 @@ every heavy subsystem is one switch.
 ```bash
 npm install
 npm start           # launch the browser
-npm test            # 120 unit tests
+npm test            # 242 unit tests
 npm run smoke       # boot the real browser, drive it, screenshot it
 ```
 
@@ -74,9 +74,9 @@ what you want, and it appears in the switcher beside the others.
 through the same IPC the UI uses, and screenshots it. Latest run:
 
 ```
-35/35 checks passed
+38/38 checks passed
 
-  ok   bootstrap wires every declared IPC channel — 325 handlers
+  ok   bootstrap wires every declared IPC channel — 332 handlers
   ok   first run opens the onboarding flow — Welcome to Aether
   ok   ad blocking is attached and the engine is loaded — 112026 rules from 5 lists
   ok   the web-request hub multiplexes every participant
@@ -270,13 +270,20 @@ The Gradle wrapper is committed, so no Gradle install is needed.
 ```
 src/main/          Electron main process
   window/          tabs, layout geometry, window orchestration
-  services/        one directory per subsystem
+  services/
+    modes.js       the Mode API — a mode is a document, not a code path
+    feature-store.js  76 features, their costs and dependencies
+    adblock/  ai/  passwords/  sync/  vpn/     baseline subsystems
+    devtools/      REST, sockets, terminal, database, GraphQL, Docker, mocks
+    gaming/        performance, recorder, streams, feeds, deals, ping, overlay
+    creator/  student/  ghost/                 the three newer modes
   ipc/             the main↔renderer contract, in one file
-src/preload/       the two security boundaries
-src/ui/            browser chrome renderer
-src/pages/         aether:// internal pages
+src/preload/       the three security boundaries (chrome, content, overlay)
+src/ui/
+  components/      mode-switcher.js, mode-panels.js — the two registries
+src/pages/         aether:// internal pages, including the HUD and prompter
 android/           Kotlin/Compose companion
-test/              120 unit tests
+test/              242 unit tests
 scripts/           smoke test, tooling
 ```
 

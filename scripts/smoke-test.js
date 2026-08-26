@@ -519,6 +519,83 @@ app.whenReady().then(async () => {
     return 'history and sync off, randomisation on';
   });
 
+  await check('the custom-mode builder renders and creates a mode', async () => {
+    const tab = win.tabs.create({ url: 'aether://settings#modes', background: false });
+    await until(() => tab.webContents && !tab.webContents.isLoading(),
+      { label: 'the settings page to load' });
+    await wait(500);
+
+    const before = await tab.webContents.executeJavaScript(`
+      (() => ({
+        cards: document.querySelectorAll('.mode-card').length,
+        builder: !!document.querySelector('.mode-builder'),
+        picks: document.querySelectorAll('.pick').length,
+        navActive: document.querySelector('.nav-item.is-active')?.textContent?.trim(),
+      }))()
+    `);
+    assert(before.cards >= 6, `only ${before.cards} mode cards rendered`);
+    assert(before.builder, 'the custom-mode builder did not render');
+    assert(before.picks > 40, `only ${before.picks} feature chips in the picker`);
+    // A deep link must highlight the section it opened, not the default one.
+    assert(before.navActive === 'Modes',
+      `the sidebar highlighted "${before.navActive}" while showing Modes`);
+
+    await capture(win, 'settings-modes');
+
+    // Drive the builder the way a user would, rather than calling the
+    // service: this is the path that would break if the page and the IPC
+    // surface disagreed.
+    await tab.webContents.executeJavaScript(`
+      (() => {
+        const name = document.querySelector('.mode-builder .input');
+        name.value = 'Built By Smoke';
+        document.querySelectorAll('.pick')[0].click();
+        [...document.querySelectorAll('.btn.primary')]
+          .find((b) => b.textContent.includes('Create mode')).click();
+      })()
+    `);
+    await wait(600);
+
+    const created = container.modes.list().find((m) => m.name === 'Built By Smoke');
+    assert(created, 'the builder did not create a mode');
+    assert(!created.builtin, 'a built mode should not be marked built-in');
+
+    container.modes.remove(created.id);
+    win.tabs.close(tab.id);
+    return `${before.cards} modes, ${before.picks} feature chips`;
+  });
+
+  await check('onboarding asks what the user is here to do', async () => {
+    const tab = win.tabs.create({ url: 'aether://onboarding', background: false });
+    await until(() => tab.webContents && !tab.webContents.isLoading(),
+      { label: 'onboarding to load' });
+    await wait(400);
+
+    // Step to the purpose question.
+    const found = await tab.webContents.executeJavaScript(`
+      (async () => {
+        const next = [...document.querySelectorAll('button')]
+          .find((b) => /next|continue/i.test(b.textContent));
+        if (next) next.click();
+        await new Promise((r) => setTimeout(r, 400));
+        const cards = [...document.querySelectorAll('.ob-purpose')];
+        cards[1]?.click();
+        return {
+          count: cards.length,
+          labels: cards.map((c) => c.querySelector('h3')?.textContent),
+          selected: document.querySelector('.ob-purpose.is-on h3')?.textContent,
+        };
+      })()
+    `);
+
+    assert(found.count === 6, `expected 6 purposes, got ${found.count}`);
+    assert(found.selected, 'clicking a purpose did not select it');
+    await capture(win, 'onboarding-purpose');
+
+    win.tabs.close(tab.id);
+    return `${found.count} purposes, picked "${found.selected}"`;
+  });
+
   await check('a custom mode mixes features from two built-ins', () => {
     const { modes, features } = container;
     const doc = modes.create({
