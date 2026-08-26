@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing is backed up or transferred to a new device.
+
+  The vault, cookies and history are exactly the data a cloud backup should
+  not hold, and encrypted preferences are keyed to this device's keystore, so
+  a restored copy would be undecryptable anyway.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+    </device-transfer>
+</data-extraction-rules>

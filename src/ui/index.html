@@ -1,0 +1,33 @@
+<!--
+  Browser chrome shell.
+
+  Loaded into a WebContentsView that spans the whole window and sits *below*
+  the page views. Only the regions that paint a background are visible; the
+  content rectangle stays transparent so page pixels show through.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self'; connect-src 'none'">
+<title>Aether</title>
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/base.css">
+<link rel="stylesheet" href="styles/chrome.css">
+<link rel="stylesheet" href="styles/panels.css">
+
+<div id="shell" data-orientation="vertical" data-sidebar="expanded">
+  <aside id="sidebar">
+    <div id="sidebar-head" class="sidebar-head"></div>
+    <div id="sidebar-tabs" class="sidebar-scroll"></div>
+    <div id="sidebar-foot" class="sidebar-foot"></div>
+    <div id="sidebar-resize" class="sidebar-resize"></div>
+  </aside>
+
+  <div id="tabstrip"></div>
+  <header id="toolbar"></header>
+  <div id="content-slot"></div>
+</div>
+
+<div id="panel"></div>
+
+<script type="module" src="app.js"></script>

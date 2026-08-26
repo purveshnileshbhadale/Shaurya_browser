@@ -1,0 +1,19 @@
+node_modules/
+dist/
+out/
+*.log
+.DS_Store
+.aether-profile/
+userdata/
+filters/*.txt
+!filters/.gitkeep
+test-results/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.apk
+*.aab

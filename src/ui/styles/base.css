@@ -1,0 +1,288 @@
+/**
+ * Reset and shared primitives.
+ *
+ * The chrome renderer is a transparent overlay sitting *behind* the page
+ * views, so anything not explicitly painted lets the page show through. That
+ * is deliberate: it means the toolbar and sidebar are the only things we
+ * composite, and the page never repaints when chrome state changes.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs);
+  color: var(--text);
+  /* Transparent: the page views are composited above this surface, and only
+     the chrome regions below paint a background. */
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  cursor: default;
+}
+
+/* Nothing in the chrome should be selectable except real text inputs. */
+input,
+textarea,
+[contenteditable],
+.selectable {
+  user-select: text;
+  cursor: text;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+/**
+ * The `hidden` attribute must win.
+ *
+ * The UA sheet's `[hidden] { display: none }` loses to any class selector
+ * that sets `display` — so `.btn { display: inline-flex }` silently defeats
+ * `element.hidden = true`, and the element stays on screen.
+ */
+[hidden] {
+  display: none !important;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Focus                                                                      */
+/* ------------------------------------------------------------------------ */
+
+/* Keyboard-first navigation (spec §5) means focus must always be visible —
+   but only when the user is actually navigating by keyboard. */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Primitives                                                                 */
+/* ------------------------------------------------------------------------ */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  flex: none;
+  transition: background var(--dur-fast) var(--ease),
+              color var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.icon-btn:active:not(:disabled) {
+  background: var(--bg-active);
+  transform: scale(0.94);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+}
+.icon-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text);
+  font-size: var(--fs);
+  font-weight: 500;
+  transition: background var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--bg-active); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.btn-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.btn-ghost {
+  background: transparent;
+}
+.btn-ghost:hover:not(:disabled) { background: var(--bg-hover); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.switch {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  flex: none;
+  transition: background var(--dur) var(--ease);
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur) var(--ease-spring);
+}
+.switch[aria-checked="true"] {
+  background: var(--accent);
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(14px);
+}
+.switch:disabled {
+  opacity: 0.4;
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  border: 1.7px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 620ms linear infinite;
+  flex: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty {
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs);
+  line-height: 1.6;
+}
+
+.divider {
+  height: 1px;
+  background: var(--divider);
+  margin: 6px 0;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.mono { font-family: var(--font-mono); }
+.dim { color: var(--text-secondary); }
+.dimmer { color: var(--text-tertiary); }
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Regions the OS should treat as the title bar for dragging. */
+.drag-region { -webkit-app-region: drag; }
+.no-drag { -webkit-app-region: no-drag; }

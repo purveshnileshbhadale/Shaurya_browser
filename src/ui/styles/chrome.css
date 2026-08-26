@@ -1,0 +1,711 @@
+/**
+ * Browser chrome layout.
+ *
+ * The shell view spans the whole window and the page views are composited on
+ * top of it, so only the regions that draw chrome paint a background — the
+ * content rectangle stays transparent and never repaints when a tab title
+ * changes.
+ */
+
+#shell {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  /* Set from JS to match the geometry the main process actually applied. */
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: var(--toolbar-h) 1fr;
+  grid-template-areas:
+    "sidebar toolbar"
+    "sidebar content";
+}
+
+#shell[data-orientation="horizontal"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: var(--tabstrip-h) var(--toolbar-h) 1fr;
+  grid-template-areas:
+    "tabstrip"
+    "toolbar"
+    "content";
+}
+
+#shell[data-sidebar="collapsed"] {
+  --sidebar-w: 52px;
+}
+
+/* The page lives here; the chrome must not paint over it. */
+#content-slot {
+  grid-area: content;
+  pointer-events: none;
+}
+
+/* ======================================================================== */
+/* Sidebar                                                                   */
+/* ======================================================================== */
+
+#sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-right: 1px solid var(--divider);
+  min-width: 0;
+  position: relative;
+}
+
+#shell[data-orientation="horizontal"] #sidebar { display: none; }
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--toolbar-h);
+  padding: 0 8px;
+  flex: none;
+  -webkit-app-region: drag;
+}
+/* macOS traffic lights are drawn by the OS at x=16; leave them room. */
+:root[data-platform="darwin"] .sidebar-head { padding-left: 78px; }
+
+.sidebar-head > * { -webkit-app-region: no-drag; }
+
+.workspace-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: var(--fs-md);
+  flex: 1;
+  min-width: 0;
+  transition: background var(--dur-fast) var(--ease);
+}
+.workspace-switch:hover { background: var(--bg-hover); }
+.workspace-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--accent);
+}
+
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 6px 8px;
+  scrollbar-gutter: stable;
+}
+
+.sidebar-foot {
+  flex: none;
+  padding: 6px;
+  border-top: 1px solid var(--divider);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Drag handle for resizing the sidebar. */
+.sidebar-resize {
+  position: absolute;
+  top: 0; right: -3px; bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 2;
+}
+.sidebar-resize:hover::after,
+.sidebar-resize.dragging::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 2px;
+  width: 2px;
+  background: var(--accent);
+}
+
+/* ======================================================================== */
+/* Tabs                                                                      */
+/* ======================================================================== */
+
+.tab-section-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 8px 4px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.tab-group {
+  margin: 3px 0;
+  border-radius: var(--radius);
+  position: relative;
+}
+.tab-group::before {
+  content: "";
+  position: absolute;
+  left: 3px; top: 26px; bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--group-color, var(--accent));
+  opacity: 0.5;
+}
+.tab-group[data-collapsed="true"]::before { display: none; }
+
+.tab-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: background var(--dur-fast) var(--ease);
+}
+.tab-group-head:hover { background: var(--bg-hover); }
+.tab-group-swatch {
+  width: 9px; height: 9px;
+  border-radius: 3px;
+  flex: none;
+  background: var(--group-color, var(--accent));
+}
+.tab-group-chevron {
+  transition: transform var(--dur) var(--ease);
+}
+.tab-group[data-collapsed="true"] .tab-group-chevron { transform: rotate(-90deg); }
+.tab-group-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.tab-group-body { padding-left: 10px; }
+.tab-group[data-collapsed="true"] .tab-group-body { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 6px 0 8px;
+  margin: 1px 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--fs);
+  position: relative;
+  /* Only the properties that actually change — animating `all` here costs
+     a compositor layer per tab. */
+  transition: background var(--dur-fast) var(--ease),
+              color var(--dur-fast) var(--ease),
+              opacity var(--dur) var(--ease);
+}
+.tab:hover { background: var(--bg-hover); color: var(--text); }
+.tab.is-active {
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+.tab.is-hibernated { opacity: 0.55; }
+.tab.is-dragging {
+  opacity: 0.4;
+  background: var(--accent-soft);
+}
+.tab.drop-before::before,
+.tab.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 6px; right: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+.tab.drop-before::before { top: -2px; }
+.tab.drop-after::after { bottom: -2px; }
+
+.tab-favicon {
+  width: 16px; height: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.favicon { border-radius: 3px; }
+.favicon-letter {
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tab-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tab-close {
+  width: 20px; height: 20px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  flex: none;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.tab:hover .tab-close,
+.tab.is-active .tab-close { opacity: 1; }
+.tab-close:hover { background: var(--bg-active); }
+.tab-close svg { width: 12px; height: 12px; }
+
+.tab-indicator {
+  width: 14px; height: 14px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+}
+.tab-indicator svg { width: 13px; height: 13px; }
+
+/* Pinned tabs collapse to icon-only squares. */
+.pinned-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 2px 2px 6px;
+}
+.tab.is-pinned {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+  margin: 0;
+}
+.tab.is-pinned .tab-title,
+.tab.is-pinned .tab-close { display: none; }
+
+/* Collapsed sidebar: icons only. */
+#shell[data-sidebar="collapsed"] .tab-title,
+#shell[data-sidebar="collapsed"] .tab-close,
+#shell[data-sidebar="collapsed"] .tab-group-head span,
+#shell[data-sidebar="collapsed"] .tab-section-label,
+#shell[data-sidebar="collapsed"] .workspace-switch span {
+  display: none;
+}
+#shell[data-sidebar="collapsed"] .tab { justify-content: center; padding: 0; }
+
+/* ======================================================================== */
+/* Horizontal tab strip                                                      */
+/* ======================================================================== */
+
+#tabstrip {
+  grid-area: tabstrip;
+  display: none;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 8px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--divider);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-app-region: drag;
+  scrollbar-width: none;
+}
+#tabstrip::-webkit-scrollbar { display: none; }
+#shell[data-orientation="horizontal"] #tabstrip { display: flex; }
+#tabstrip > * { -webkit-app-region: no-drag; }
+
+#tabstrip .tab {
+  height: calc(var(--tabstrip-h) - 4px);
+  min-width: 110px;
+  max-width: 220px;
+  /* Rounded top corners only, so tabs read as sheets attached to the page. */
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin: 0;
+}
+#tabstrip .tab.is-active {
+  background: var(--bg-elevated);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.06);
+}
+#tabstrip .tab.is-pinned { min-width: 0; width: 38px; }
+
+/* ======================================================================== */
+/* Toolbar                                                                   */
+/* ======================================================================== */
+
+#toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--divider);
+  -webkit-app-region: drag;
+  min-width: 0;
+}
+#toolbar > * { -webkit-app-region: no-drag; }
+
+/* Linux draws its own controls; macOS/Windows use the native ones. */
+.window-controls { display: none; gap: 2px; margin-left: 4px; }
+:root[data-platform="linux"] .window-controls { display: flex; }
+.window-controls .icon-btn:last-child:hover { background: var(--danger); color: #fff; }
+
+/* ---- address bar ---- */
+
+.omnibox {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px 0 6px;
+  margin: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  border: 1px solid transparent;
+  min-width: 0;
+  position: relative;
+  transition: background var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease),
+              box-shadow var(--dur-fast) var(--ease);
+}
+.omnibox:hover { background: var(--bg-hover); }
+.omnibox.is-focused {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-softer);
+}
+
+.omnibox-input {
+  flex: 1;
+  background: none;
+  border: 0;
+  outline: none;
+  font: inherit;
+  color: var(--text);
+  min-width: 0;
+  padding: 0;
+}
+.omnibox-input::placeholder { color: var(--text-tertiary); }
+
+/* Until focused we show a formatted URL: host emphasised, path dimmed. */
+.omnibox-display {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+.omnibox-scheme { color: var(--text-tertiary); }
+.omnibox-host { color: var(--text); font-weight: 500; }
+.omnibox-path { color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; }
+
+.omnibox-lead {
+  display: grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  flex: none;
+  color: var(--text-secondary);
+}
+.omnibox-lead.secure { color: var(--success); }
+.omnibox-lead.insecure { color: var(--warning); }
+.omnibox-lead svg { width: 13px; height: 13px; }
+
+.omnibox-actions { display: flex; align-items: center; gap: 1px; flex: none; }
+.omnibox-actions .icon-btn { width: 24px; height: 24px; }
+.omnibox-actions .icon-btn svg { width: 14px; height: 14px; }
+
+.shield-count {
+  position: absolute;
+  top: -2px; right: -2px;
+  min-width: 13px; height: 13px;
+  padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 9px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+/* Progress line under the toolbar while a page loads. */
+.load-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.load-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: indeterminate 1.1s var(--ease) infinite;
+}
+@keyframes indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* ======================================================================== */
+/* Side panel                                                                */
+/* ======================================================================== */
+
+#panel {
+  position: fixed;
+  top: var(--toolbar-h);
+  right: 0;
+  bottom: 0;
+  width: var(--panel-w, 380px);
+  display: none;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--divider);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-chrome);
+  animation: panel-in var(--dur) var(--ease);
+}
+#panel.is-open { display: flex; }
+#shell[data-orientation="horizontal"] ~ #panel {
+  top: calc(var(--tabstrip-h) + var(--toolbar-h));
+}
+
+@keyframes panel-in {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--divider);
+  flex: none;
+}
+.panel-title {
+  font-weight: 600;
+  font-size: var(--fs-md);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+.panel-foot {
+  flex: none;
+  padding: 10px 12px;
+  border-top: 1px solid var(--divider);
+}
+.panel-resize {
+  position: absolute;
+  top: 0; left: -3px; bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+}
+
+.panel-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 10px 0;
+  border-bottom: 1px solid var(--divider);
+  flex: none;
+}
+.panel-tab {
+  padding: 6px 10px;
+  font-size: var(--fs);
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.panel-tab:hover { color: var(--text); }
+.panel-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ======================================================================== */
+/* Split view divider                                                        */
+/* ======================================================================== */
+
+.split-divider {
+  position: fixed;
+  z-index: var(--z-chrome);
+  display: grid;
+  place-items: center;
+  cursor: col-resize;
+  background: var(--bg);
+}
+.split-divider::after {
+  content: "";
+  width: 3px;
+  height: 34px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  transition: background var(--dur-fast) var(--ease);
+}
+.split-divider:hover::after,
+.split-divider.dragging::after { background: var(--accent); }
+
+/* ======================================================================== */
+/* Find bar                                                                  */
+/* ======================================================================== */
+
+.find-bar {
+  position: fixed;
+  top: calc(var(--toolbar-h) + 8px);
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px 5px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-popover);
+  animation: drop-in var(--dur) var(--ease);
+}
+.find-bar input {
+  background: none; border: 0; outline: none;
+  font: inherit; color: var(--text);
+  width: 180px;
+}
+.find-count {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  min-width: 52px;
+  text-align: right;
+}
+
+@keyframes drop-in {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* ======================================================================== */
+/* Banners & toasts                                                          */
+/* ======================================================================== */
+
+/* The CORS warning is deliberately impossible to miss and cannot be
+   dismissed while the relaxation is active (spec §5). */
+.warning-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  border-bottom: 1px solid color-mix(in oklab, var(--warning) 30%, transparent);
+}
+.warning-banner svg { width: 15px; height: 15px; flex: none; }
+
+.toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--fs);
+  z-index: var(--z-toast);
+  animation: toast-in var(--dur) var(--ease-spring);
+  max-width: 60vw;
+}
+.toast[data-tone="error"] { border-color: var(--danger); color: var(--danger); }
+.toast[data-tone="success"] { border-color: var(--success); color: var(--success); }
+
+@keyframes toast-in {
+  from { transform: translate(-50%, 14px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* ======================================================================== */
+/* Popovers                                                                  */
+/* ======================================================================== */
+
+.popover {
+  position: fixed;
+  min-width: 260px;
+  max-width: 380px;
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xl);
+  z-index: var(--z-popover);
+  animation: pop-in var(--dur-fast) var(--ease-spring);
+}
+@keyframes pop-in {
+  from { transform: translateY(-6px) scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs);
+  color: var(--text);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease);
+}
+.menu-item:hover { background: var(--bg-hover); }
+.menu-item svg { width: 15px; height: 15px; flex: none; color: var(--text-secondary); }
+.menu-item .accel {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.menu-item.is-danger { color: var(--danger); }
+.menu-item.is-danger svg { color: var(--danger); }
+
+.popover-head {
+  padding: 6px 10px 8px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  font-size: var(--fs);
+}
+.stat-row .value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}

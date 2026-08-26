@@ -1,0 +1,303 @@
+/**
+ * Toolbar: navigation, the address bar, and the per-site privacy controls.
+ *
+ * The address bar has two states. Unfocused it shows a *formatted* URL —
+ * host emphasised, scheme and path dimmed — which is the single most
+ * effective anti-phishing affordance a browser has. Focused it becomes a
+ * plain editable input showing the real, complete URL, because hiding part
+ * of it while the user edits is its own hazard.
+ */
+import { h, icon, clear, displayHost } from '../core/dom.js';
+import { state, subscribe, invoke, selectors, toast } from '../core/store.js';
+
+export function createToolbar({ container }) {
+  let inputEl = null;
+  let suggestionsEl = null;
+
+  // ---- structure (built once; contents update in place) ----------------
+
+  const back = navButton('back', 'Back', () => invoke('tabs.goBack', {}));
+  const forward = navButton('forward', 'Forward', () => invoke('tabs.goForward', {}));
+  const reload = h('button.icon-btn.no-drag', {
+    title: 'Reload',
+    onclick: () => {
+      const tab = selectors.activeTab();
+      if (tab?.loading) invoke('tabs.stop', {});
+      else invoke('tabs.reload', {});
+    },
+  }, icon('reload'));
+
+  const leadIcon = h('span.omnibox-lead', {
+    title: 'Site information',
+    onclick: (e) => openPopover('site', e.currentTarget),
+  }, icon('globe'));
+
+  const display = h('div.omnibox-display');
+
+  inputEl = h('input.omnibox-input', {
+    type: 'text',
+    spellcheck: 'false',
+    autocomplete: 'off',
+    placeholder: 'Search or enter address',
+    style: { display: 'none' },
+    onfocus: () => enterEditing(),
+    onblur: () => setTimeout(exitEditing, 120), // let a suggestion click land
+    oninput: () => onType(),
+    onkeydown: (e) => onKeyDown(e),
+  });
+
+  const shield = h('button.icon-btn.no-drag', {
+    title: 'Tracker blocking',
+    style: { position: 'relative' },
+    onclick: (e) => openPopover('shield', e.currentTarget),
+  }, icon('shield'), h('span.shield-count', { style: { display: 'none' } }));
+
+  const bookmark = h('button.icon-btn.no-drag', {
+    title: 'Bookmark this page',
+    onclick: () => invoke('bookmarks.add', {}).then(() => toast('Bookmarked', 'success')),
+  }, icon('star'));
+
+  const readerBtn = h('button.icon-btn.no-drag', {
+    title: 'Reader mode',
+    onclick: () => invoke('reader.toggle', {}).catch(() => {}),
+  }, icon('book'));
+
+  const omnibox = h('div.omnibox', {},
+    leadIcon,
+    display,
+    inputEl,
+    h('div.omnibox-actions', {}, readerBtn, bookmark, shield));
+
+  suggestionsEl = h('div.omnibox-suggestions', { style: { display: 'none' } });
+
+  const rightGroup = h('div', { style: { display: 'flex', gap: '2px', flex: 'none' } },
+    toolbarButton('sparkle', 'AI assistant', () => togglePanel('ai')),
+    toolbarButton('note', 'Notes', () => togglePanel('notes')),
+    toolbarButton('code', 'Developer', () => togglePanel('dev')),
+    toolbarButton('vpn', 'VPN', (e) => openPopover('vpn', e.currentTarget), 'vpn-button'),
+    toolbarButton('download', 'Downloads', (e) => openPopover('downloads', e.currentTarget)),
+    toolbarButton('more', 'Menu', (e) => openPopover('menu', e.currentTarget)));
+
+  const windowControls = h('div.window-controls', {},
+    h('button.icon-btn', { title: 'Minimise', onclick: () => invoke('window.minimize', {}) },
+      h('svg:svg', { viewBox: '0 0 24 24' }, h('svg:path', { d: 'M5 12h14' }))),
+    h('button.icon-btn', { title: 'Maximise', onclick: () => invoke('window.maximize', {}) },
+      h('svg:svg', { viewBox: '0 0 24 24' }, h('svg:path', { d: 'M5 5h14v14H5z' }))),
+    h('button.icon-btn', { title: 'Close', onclick: () => invoke('window.close', {}) },
+      icon('close')));
+
+  const progress = h('div.load-progress', { style: { display: 'none' } });
+
+  container.append(back, forward, reload, omnibox, rightGroup, windowControls, progress);
+  document.body.appendChild(suggestionsEl);
+
+  // ---- editing ---------------------------------------------------------
+
+  function enterEditing() {
+    const tab = selectors.activeTab();
+    omnibox.classList.add('is-focused');
+    display.style.display = 'none';
+    inputEl.style.display = '';
+    // Show the *whole* URL while editing; the formatted view is for reading.
+    inputEl.value = tab?.url?.startsWith('aether://start') ? '' : (tab?.url || '');
+    inputEl.select();
+    state.omnibox.focused = true;
+  }
+
+  function exitEditing() {
+    if (document.activeElement === inputEl) return;
+    omnibox.classList.remove('is-focused');
+    inputEl.style.display = 'none';
+    display.style.display = '';
+    suggestionsEl.style.display = 'none';
+    state.omnibox.focused = false;
+    render();
+  }
+
+  let suggestToken = 0;
+  async function onType() {
+    const query = inputEl.value;
+    const token = ++suggestToken;
+    if (!query.trim()) {
+      suggestionsEl.style.display = 'none';
+      return;
+    }
+    const results = await invoke('omnibox.suggest', { query }, { quiet: true }).catch(() => []);
+    // A slow response for an older keystroke must not overwrite a newer one.
+    if (token !== suggestToken) return;
+    renderSuggestions(results);
+  }
+
+  function renderSuggestions(results) {
+    state.omnibox.suggestions = results;
+    state.omnibox.selectedIndex = 0;
+    clear(suggestionsEl);
+    if (!results.length) {
+      suggestionsEl.style.display = 'none';
+      return;
+    }
+
+    for (const [i, result] of results.entries()) {
+      suggestionsEl.appendChild(h('div.suggestion', {
+        class: { 'is-selected': i === 0 },
+        dataset: { index: String(i) },
+        onmousedown: (e) => { e.preventDefault(); commit(result); },
+        onmouseenter: () => selectSuggestion(i),
+      },
+      icon(result.icon || 'globe'),
+      h('div.suggestion-text', {},
+        h('div.suggestion-title.truncate', { text: result.title }),
+        h('div.suggestion-sub.truncate', { text: result.subtitle || '' })),
+      result.kind === 'tab' && h('span.chip', { text: 'Switch' })));
+    }
+
+    const rect = omnibox.getBoundingClientRect();
+    Object.assign(suggestionsEl.style, {
+      display: 'block',
+      left: `${rect.left}px`,
+      top: `${rect.bottom + 4}px`,
+      width: `${rect.width}px`,
+    });
+  }
+
+  function selectSuggestion(index) {
+    state.omnibox.selectedIndex = index;
+    for (const el of suggestionsEl.children) {
+      el.classList.toggle('is-selected', Number(el.dataset.index) === index);
+    }
+  }
+
+  function onKeyDown(event) {
+    const { suggestions, selectedIndex } = state.omnibox;
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (!suggestions.length) return;
+      event.preventDefault();
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      const next = (selectedIndex + delta + suggestions.length) % suggestions.length;
+      selectSuggestion(next);
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const chosen = suggestions[selectedIndex];
+      if (chosen && inputEl.value.trim()) commit(chosen);
+      else commit({ kind: 'navigate', raw: inputEl.value });
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      inputEl.blur();
+    }
+  }
+
+  function commit(result) {
+    suggestionsEl.style.display = 'none';
+    inputEl.blur();
+    if (result.kind === 'tab' && result.tabId) {
+      invoke('tabs.activate', { id: result.tabId });
+    } else {
+      invoke('tabs.navigate', result.url ? { url: result.url } : { raw: result.raw });
+    }
+  }
+
+  // ---- render ----------------------------------------------------------
+
+  function render() {
+    const tab = selectors.activeTab();
+
+    back.disabled = !tab?.canGoBack;
+    forward.disabled = !tab?.canGoForward;
+    clear(reload);
+    reload.appendChild(icon(tab?.loading ? 'stop' : 'reload'));
+    reload.title = tab?.loading ? 'Stop' : 'Reload';
+    progress.style.display = tab?.loading ? 'block' : 'none';
+
+    if (!state.omnibox.focused) renderDisplay(tab);
+
+    // Lead icon reflects the real security state of the origin.
+    clear(leadIcon);
+    leadIcon.className = 'omnibox-lead';
+    if (!tab?.url || tab.url.startsWith('aether://')) {
+      leadIcon.appendChild(icon('sparkle'));
+    } else if (tab.url.startsWith('https://')) {
+      leadIcon.classList.add('secure');
+      leadIcon.appendChild(icon('lock'));
+    } else {
+      leadIcon.classList.add('insecure');
+      leadIcon.appendChild(icon('warning'));
+      leadIcon.title = 'This connection is not encrypted';
+    }
+
+    // Blocked-count badge on the shield (spec §3).
+    const count = state.adblock?.count || 0;
+    const badge = shield.querySelector('.shield-count');
+    badge.style.display = count > 0 ? 'grid' : 'none';
+    badge.textContent = count > 99 ? '99+' : String(count);
+
+    readerBtn.style.display = selectors.feature('reader') ? '' : 'none';
+    readerBtn.classList.toggle('is-active', Boolean(tab?.readerMode));
+
+    // VPN button reflects connection state.
+    const vpnButton = rightGroup.querySelector('.vpn-button');
+    if (vpnButton) {
+      vpnButton.style.display = selectors.feature('vpn') ? '' : 'none';
+      vpnButton.classList.toggle('is-active', state.vpn?.status === 'connected');
+    }
+
+    for (const [id, feature] of [['sparkle', 'ai'], ['note', 'aiNotes'], ['code', 'devtools']]) {
+      const button = rightGroup.querySelector(`[data-icon="${id}"]`);
+      if (button) button.style.display = selectors.feature(feature) ? '' : 'none';
+    }
+  }
+
+  function renderDisplay(tab) {
+    clear(display);
+    const url = tab?.url || '';
+    if (!url || url.startsWith('aether://start')) {
+      display.appendChild(h('span.omnibox-path', { text: 'Search or enter address' }));
+      return;
+    }
+    try {
+      const parsed = new URL(url);
+      display.append(
+        h('span.omnibox-scheme', { text: parsed.protocol === 'https:' ? '' : `${parsed.protocol}//` }),
+        h('span.omnibox-host', { text: displayHost(url) }),
+        h('span.omnibox-path', { text: parsed.pathname === '/' ? '' : parsed.pathname + parsed.search })
+      );
+    } catch {
+      display.appendChild(h('span.omnibox-host', { text: url }));
+    }
+  }
+
+  function focusAddressBar() {
+    inputEl.focus();
+  }
+
+  subscribe(['tabs', 'adblock', 'vpn', 'features', 'settings'], render);
+  render();
+
+  return { render, focusAddressBar, element: container };
+}
+
+function navButton(name, title, onclick) {
+  return h('button.icon-btn.no-drag', { title, onclick }, icon(name));
+}
+
+function toolbarButton(name, title, onclick, extraClass) {
+  const button = h('button.icon-btn.no-drag', {
+    title,
+    onclick,
+    dataset: { icon: name },
+  }, icon(name));
+  if (extraClass) button.classList.add(extraClass);
+  return button;
+}
+
+function togglePanel(kind) {
+  window.dispatchEvent(new CustomEvent('aether:panel', { detail: { kind } }));
+}
+
+function openPopover(kind, anchor) {
+  window.dispatchEvent(new CustomEvent('aether:popover', { detail: { kind, anchor } }));
+}

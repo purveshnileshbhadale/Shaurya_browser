@@ -1,0 +1,128 @@
+body { background: var(--bg); overflow: hidden; }
+
+.ob-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(70vw 70vh at 20% 0%, color-mix(in oklab, var(--accent) 28%, transparent), transparent 60%),
+    radial-gradient(60vw 60vh at 90% 100%, color-mix(in oklab, var(--accent) 20%, transparent), transparent 60%),
+    var(--bg);
+}
+
+.ob {
+  position: relative; z-index: 1;
+  height: 100vh;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 32px 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ob-dots { display: flex; gap: 7px; justify-content: center; margin-bottom: 34px; }
+.ob-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--border-strong);
+  transition: width var(--dur) var(--ease-spring), background var(--dur) var(--ease);
+}
+.ob-dot.is-active { width: 24px; border-radius: 4px; background: var(--accent); }
+.ob-dot.is-done { background: var(--accent); opacity: 0.45; }
+
+.ob-stage { flex: 1; overflow-y: auto; }
+.ob-step { animation: step-in var(--dur-slow) var(--ease); }
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.ob-mark {
+  width: 60px; height: 60px;
+  border-radius: 17px;
+  display: grid; place-items: center;
+  background: var(--accent);
+  color: var(--accent-text);
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-lg);
+}
+.ob-mark svg { width: 30px; height: 30px; }
+
+.ob h1 {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  line-height: 1.15;
+}
+.ob .lede {
+  font-size: var(--fs-lg);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 26px;
+  max-width: 56ch;
+}
+
+.ob-points { display: flex; flex-direction: column; gap: 15px; margin-bottom: 26px; }
+.ob-point { display: flex; gap: 13px; align-items: flex-start; }
+.ob-point-icon {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+.ob-point-icon svg { width: 16px; height: 16px; }
+.ob-point h3 { margin: 0 0 3px; font-size: var(--fs-md); font-weight: 600; }
+.ob-point p { margin: 0; font-size: var(--fs-md); color: var(--text-secondary); line-height: 1.55; }
+
+/* The monetisation promise, stated up front rather than buried (spec §8). */
+.ob-promise {
+  padding: 17px 19px;
+  border-radius: var(--radius-lg);
+  background: var(--success-soft);
+  border: 1px solid color-mix(in oklab, var(--success) 34%, transparent);
+  margin-bottom: 22px;
+}
+.ob-promise h3 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 7px;
+  font-size: var(--fs-md);
+  color: var(--success);
+}
+.ob-promise p { margin: 0; font-size: var(--fs-md); line-height: 1.6; color: var(--text); }
+.ob-promise svg { width: 17px; height: 17px; }
+
+.ob-choices { display: grid; gap: 10px; margin-bottom: 22px; }
+.ob-choice {
+  display: flex; align-items: center; gap: 13px;
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.ob-choice:hover { border-color: var(--accent); }
+.ob-choice.is-on { border-color: var(--accent); background: var(--accent-softer); }
+.ob-choice-text { flex: 1; min-width: 0; }
+.ob-choice h4 { margin: 0 0 2px; font-size: var(--fs-md); font-weight: 600; }
+.ob-choice p { margin: 0; font-size: var(--fs-sm); color: var(--text-secondary); }
+
+.ob-swatches { display: flex; gap: 9px; flex-wrap: wrap; }
+.ob-swatch {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.ob-swatch.is-on { border-color: var(--text); transform: scale(1.14); }
+
+.ob-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 22px;
+  border-top: 1px solid var(--divider);
+}
+.ob-nav { display: flex; gap: 9px; }
+.ob-foot .btn { padding: 9px 20px; }

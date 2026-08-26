@@ -1,0 +1,33 @@
+<!-- Customisable start page (spec §2): speed dial, background and widgets. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>New Tab</title>
+<link rel="stylesheet" href="/_shared/styles/tokens.css">
+<link rel="stylesheet" href="/_shared/styles/base.css">
+<link rel="stylesheet" href="start.css">
+
+<div id="bg" class="bg"></div>
+
+<main class="start">
+  <header class="start-head">
+    <div class="clock" id="clock"></div>
+    <form class="start-search" id="search-form">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM21 21l-4.3-4.3"/>
+      </svg>
+      <input id="search" type="text" placeholder="Search the web or type a URL"
+             autocomplete="off" spellcheck="false" autofocus>
+    </form>
+  </header>
+
+  <section class="dial" id="dial" aria-label="Speed dial"></section>
+
+  <section class="widgets" id="widgets"></section>
+
+  <footer class="start-foot">
+    <span id="blocked-stat"></span>
+    <button class="btn btn-ghost" id="customise">Customise</button>
+  </footer>
+</main>
+
+<script type="module" src="start.js"></script>

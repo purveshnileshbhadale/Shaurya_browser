@@ -1,0 +1,190 @@
+body { background: var(--bg); overflow-y: auto; }
+
+/* Animated gradient backdrop. Pure CSS so it costs no JS frame budget. */
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(60vw 60vh at 18% 12%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 62%),
+    radial-gradient(52vw 52vh at 82% 78%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 60%),
+    var(--bg);
+  animation: drift 30s var(--ease) infinite alternate;
+}
+@keyframes drift {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.08) translate(-1.5%, 1.5%); }
+}
+.bg[data-background="plain"] { background: var(--bg); animation: none; }
+
+.start {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 12vh 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  min-height: 100vh;
+}
+
+.start-head { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.clock {
+  font-size: 46px;
+  font-weight: 250;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.clock small { display: block; font-size: 14px; color: var(--text-secondary); font-weight: 400; }
+
+.start-search {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: min(560px, 100%);
+  padding: 13px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.start-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lg), 0 0 0 4px var(--accent-softer);
+}
+.start-search svg {
+  width: 18px; height: 18px;
+  stroke: var(--text-tertiary); fill: none; stroke-width: 1.8;
+  stroke-linecap: round; flex: none;
+}
+.start-search input {
+  flex: 1; background: none; border: 0; outline: none;
+  font: inherit; font-size: var(--fs-lg); color: var(--text);
+}
+
+/* ---- speed dial ---- */
+
+.dial {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 12px;
+}
+.dial-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 17px 10px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  transition: transform var(--dur) var(--ease-spring),
+              box-shadow var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+  position: relative;
+}
+.dial-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent);
+}
+.dial-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  font-size: 19px; font-weight: 700; color: #fff;
+}
+.dial-icon img { width: 26px; height: 26px; border-radius: 6px; }
+.dial-label {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dial-remove {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 19px; height: 19px;
+  border-radius: 50%;
+  background: var(--bg-active);
+  color: var(--text-secondary);
+  display: grid; place-items: center;
+  opacity: 0;
+  font-size: 12px;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.dial-tile:hover .dial-remove { opacity: 1; }
+.dial-tile.is-add { border-style: dashed; color: var(--text-tertiary); }
+
+/* ---- widgets ---- */
+
+.widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+.widget {
+  padding: 17px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+}
+.widget h3 {
+  margin: 0 0 11px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+}
+.todo-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 5px 0;
+  font-size: var(--fs-md);
+}
+.todo-item input { accent-color: var(--accent); }
+.todo-item.done span { text-decoration: line-through; color: var(--text-tertiary); }
+.todo-add {
+  width: 100%;
+  margin-top: 9px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 5px 0;
+  font: inherit;
+  color: var(--text);
+  outline: none;
+}
+.todo-add:focus { border-bottom-color: var(--accent); }
+
+.note-preview {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--divider);
+}
+.note-preview:last-child { border-bottom: 0; }
+.note-preview strong { display: block; color: var(--text); font-size: var(--fs); }
+
+.weather-now { display: flex; align-items: baseline; gap: 10px; }
+.weather-temp { font-size: 30px; font-weight: 300; }
+.weather-desc { color: var(--text-secondary); font-size: var(--fs-md); }
+
+.start-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  padding-top: 20px;
+}

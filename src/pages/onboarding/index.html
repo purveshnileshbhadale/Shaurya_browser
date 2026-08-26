@@ -1,0 +1,29 @@
+<!--
+  First-run onboarding (spec §9.3).
+
+  Four steps: what Aether is, the privacy guarantees stated plainly, the AI
+  layer and where its data goes, and the developer tools. Every claim on the
+  privacy step is one the code actually implements.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Welcome to Aether</title>
+<link rel="stylesheet" href="/_shared/styles/tokens.css">
+<link rel="stylesheet" href="/_shared/styles/base.css">
+<link rel="stylesheet" href="onboarding.css">
+
+<div class="ob-bg"></div>
+
+<main class="ob">
+  <nav class="ob-dots" id="dots" aria-label="Progress"></nav>
+  <div class="ob-stage" id="stage"></div>
+  <footer class="ob-foot">
+    <button class="btn btn-ghost" id="skip">Skip setup</button>
+    <div class="ob-nav">
+      <button class="btn" id="back" hidden>Back</button>
+      <button class="btn btn-primary" id="next">Continue</button>
+    </div>
+  </footer>
+</main>
+
+<script type="module" src="onboarding.js"></script>

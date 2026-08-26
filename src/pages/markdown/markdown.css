@@ -1,0 +1,13 @@
+body { background: var(--bg); }
+.md-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 18px;
+  background: var(--bg); border-bottom: 1px solid var(--divider);
+  font-size: var(--fs-sm);
+}
+.md-bar .mono-sm { font-family: var(--font-mono); color: var(--text-secondary); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.page { padding-top: 32px; }
+.md-flash { animation: flash var(--dur-slow) var(--ease); }
+@keyframes flash { from { background: var(--accent-softer); } to { background: transparent; } }

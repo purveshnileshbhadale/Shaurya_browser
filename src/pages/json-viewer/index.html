@@ -1,0 +1,17 @@
+<!-- Auto-activating JSON viewer (spec §5). -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JSON</title>
+<link rel="stylesheet" href="/_shared/styles/tokens.css">
+<link rel="stylesheet" href="/_shared/styles/base.css">
+<link rel="stylesheet" href="json.css">
+<header class="jv-head">
+  <input id="search" type="search" placeholder="Filter keys and values…" spellcheck="false">
+  <span class="jv-stat" id="stat"></span>
+  <button class="btn" id="expand">Expand all</button>
+  <button class="btn" id="collapse">Collapse all</button>
+  <button class="btn" id="copy">Copy</button>
+  <button class="btn" id="raw">Raw</button>
+</header>
+<main class="jv" id="tree"></main>
+<script type="module" src="json.js"></script>

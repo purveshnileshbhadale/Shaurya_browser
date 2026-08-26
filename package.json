@@ -1,0 +1,32 @@
+{
+  "name": "aether-browser",
+  "productName": "Aether",
+  "version": "1.0.0",
+  "description": "Aether — a privacy-first, AI-native, developer-focused Chromium browser.",
+  "license": "MIT",
+  "author": "Aether Browser Project",
+  "main": "src/main/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "postinstall": "node node_modules/electron/install.js",
+    "test": "node --test test/",
+    "smoke": "node scripts/smoke-test.mjs",
+    "filters:update": "node scripts/fetch-filter-lists.mjs",
+    "lint:manifest": "node scripts/lint-extension.mjs"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0"
+  },
+  "aether": {
+    "channel": "stable",
+    "chromiumPolicy": "track-upstream-stable"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0"
+  }
+}
