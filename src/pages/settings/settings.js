@@ -15,8 +15,10 @@ const filter = document.getElementById('filter');
 let settings = {};
 let features = [];
 let footprint = null;
+let modes = null;
 
 const SECTIONS = [
+  { id: 'modes', label: 'Modes', icon: 'shuffle', render: renderModes },
   { id: 'features', label: 'Feature Store', icon: 'layers', render: renderFeatureStore },
   { id: 'appearance', label: 'Appearance', icon: 'palette', render: renderAppearance },
   { id: 'startPage', label: 'Start page', icon: 'home', render: renderStartPage },
@@ -50,6 +52,7 @@ const ICONS = {
   sync: 'M4 12a8 8 0 0 1 13.7-5.7L21 9M21 4v5h-5M20 12a8 8 0 0 1-13.7 5.7L3 15M3 20v-5h5',
   command: 'M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01',
+  shuffle: 'M4 7h4l8 10h4M4 17h4l2-2.5M16 7h4M18 5l2 2-2 2M18 15l2 2-2 2',
 };
 
 let active = 'features';
@@ -86,6 +89,7 @@ async function reload() {
   const store = await api.invoke('features.list', {});
   features = store.features;
   footprint = store.footprint;
+  modes = await api.invoke('modes.list', {});
 }
 
 function applyTheme() {
@@ -127,6 +131,179 @@ function applyFilter(query) {
   for (const row of content.querySelectorAll('.row, .feature')) {
     row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
   }
+}
+
+// ---------------------------------------------------------------------------
+// Modes and the custom-mode builder (spec §8)
+// ---------------------------------------------------------------------------
+
+async function renderModes() {
+  const section = el('section');
+  section.append(
+    el('h2', '', 'Modes'),
+    el('p', 'section-note',
+      'A mode decides which features are on, which panels the sidebar offers, and how '
+      + 'the browser looks. Switching one never changes your saved preferences — it '
+      + 'lays a set of choices over them, so switching back restores exactly what you had.')
+  );
+
+  // ---- the modes themselves ----
+  const list = el('div', 'mode-cards');
+  for (const mode of modes.modes) {
+    const card = el('div', `mode-card${mode.active ? ' is-active' : ''}`);
+    if (mode.accent) card.style.setProperty('--card-accent', mode.accent);
+
+    const head = el('div', 'mode-card-head');
+    head.append(
+      el('span', 'mode-card-name', mode.name),
+      el('span', 'mode-card-kind', mode.builtin ? 'built-in' : 'custom')
+    );
+    card.append(head, el('p', 'mode-card-tagline', mode.tagline || ''));
+
+    const actions = el('div', 'mode-card-actions');
+
+    if (!mode.active) {
+      const use = el('button', 'btn small', 'Use');
+      use.addEventListener('click', async () => {
+        await api.invoke('modes.activate', { id: mode.id });
+        await reload();
+        renderSection();
+      });
+      actions.appendChild(use);
+    } else {
+      actions.appendChild(el('span', 'mode-card-current', 'Active'));
+    }
+
+    // Copying a built-in is how you customise one: the presets stay pristine,
+    // and the copy is fully independent so a future change to the built-in
+    // cannot rewrite someone's saved mode underneath them.
+    const copy = el('button', 'btn small ghost', 'Duplicate');
+    copy.addEventListener('click', async () => {
+      const name = prompt(`Name for your copy of ${mode.name}`, `${mode.name} copy`);
+      if (!name) return;
+      await api.invoke('modes.duplicate', { id: mode.id, name });
+      await reload();
+      renderSection();
+    });
+    actions.appendChild(copy);
+
+    if (mode.overrideCount > 0) {
+      const reset = el('button', 'btn small ghost',
+        `Reset ${mode.overrideCount} change${mode.overrideCount === 1 ? '' : 's'}`);
+      reset.addEventListener('click', async () => {
+        await api.invoke('modes.resetOverrides', { id: mode.id });
+        await reload();
+        renderSection();
+      });
+      actions.appendChild(reset);
+    }
+
+    if (!mode.builtin) {
+      const remove = el('button', 'btn small danger', 'Delete');
+      remove.addEventListener('click', async () => {
+        if (!confirm(`Delete the "${mode.name}" mode? Your features and settings are not affected.`)) return;
+        await api.invoke('modes.remove', { id: mode.id });
+        await reload();
+        renderSection();
+      });
+      actions.appendChild(remove);
+    }
+
+    card.appendChild(actions);
+    list.appendChild(card);
+  }
+  section.appendChild(list);
+
+  // ---- the builder ----
+  section.append(
+    el('h3', '', 'Build a custom mode'),
+    el('p', 'section-note',
+      'Start from a built-in, then tick the features you want. A custom mode is the '
+      + 'same kind of thing as a built-in one, so it appears in the switcher beside them.')
+  );
+
+  const builder = el('div', 'mode-builder');
+
+  const nameRow = el('div', 'row');
+  const nameInput = el('input', 'input');
+  nameInput.placeholder = 'Name your mode';
+  const baseSelect = el('select', 'input');
+  for (const mode of modes.modes) {
+    const option = el('option', '', `Based on ${mode.name}`);
+    option.value = mode.id;
+    baseSelect.appendChild(option);
+  }
+  nameRow.append(nameInput, baseSelect);
+  builder.appendChild(nameRow);
+
+  // Feature picker, grouped exactly as the Feature Store groups them, so the
+  // two screens teach the same mental model.
+  const picker = el('div', 'mode-picker');
+  const chosen = new Set(features.filter((f) => f.enabled).map((f) => f.id));
+
+  const groups = new Map();
+  for (const feature of features) {
+    if (feature.core) continue;
+    if (!groups.has(feature.category)) groups.set(feature.category, []);
+    groups.get(feature.category).push(feature);
+  }
+
+  const renderPicker = () => {
+    picker.replaceChildren();
+    for (const [category, items] of groups) {
+      const group = el('div', 'mode-picker-group');
+      group.appendChild(el('h4', '', category));
+      for (const feature of items) {
+        const chip = el('button', `pick${chosen.has(feature.id) ? ' is-on' : ''}`, feature.name);
+        chip.title = feature.description;
+        chip.addEventListener('click', () => {
+          if (chosen.has(feature.id)) chosen.delete(feature.id);
+          else chosen.add(feature.id);
+          renderPicker();
+        });
+        group.appendChild(chip);
+      }
+      picker.appendChild(group);
+    }
+  };
+  renderPicker();
+  builder.appendChild(picker);
+
+  // Seeding from the chosen base keeps the picker honest: tick "based on
+  // Gamer" and it immediately shows what Gamer actually turns on. Resolved by
+  // the main process rather than guessed here, and without activating the
+  // mode — a preview must not flicker the user's chrome or fire every
+  // mode-change side effect for something they may discard.
+  baseSelect.addEventListener('change', async () => {
+    const preview = await api.invoke('modes.preview', { id: baseSelect.value })
+      .catch(() => null);
+    if (!preview) return;
+    chosen.clear();
+    for (const [id, on] of Object.entries(preview.features)) if (on) chosen.add(id);
+    renderPicker();
+  });
+
+  const create = el('button', 'btn primary', 'Create mode');
+  create.addEventListener('click', async () => {
+    if (!nameInput.value.trim()) { nameInput.focus(); return; }
+    const featureMap = {};
+    for (const feature of features) {
+      if (feature.core) continue;
+      featureMap[feature.id] = chosen.has(feature.id);
+    }
+    await api.invoke('modes.create', {
+      name: nameInput.value.trim(),
+      basedOn: baseSelect.value,
+      features: featureMap,
+    });
+    nameInput.value = '';
+    await reload();
+    renderSection();
+  });
+  builder.appendChild(create);
+
+  section.appendChild(builder);
+  return section;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,17 +363,27 @@ async function renderFeatureStore() {
         note.append(el('span', 'dimmer',
           ` Needs ${feature.blockedBy.join(', ')} to be on.`));
       }
+      // A switch whose position the user did not choose has to say so, or the
+      // Feature Store looks like it is lying about their settings.
+      if (feature.source === 'mode' && modes?.active) {
+        note.append(el('span', 'by-mode',
+          ` Set by ${modes.active.name} Mode — changing it here applies to that mode only.`));
+      }
       body.appendChild(note);
 
+      // Shows the *resolved* state, since that is what the browser is
+      // actually doing right now. Toggling inside a mode records a per-mode
+      // override; in Default it writes the preference, exactly as before.
       const toggle = el('button', 'switch');
-      toggle.setAttribute('aria-checked', String(feature.raw));
+      toggle.setAttribute('aria-checked', String(feature.enabled));
       toggle.setAttribute('aria-label', feature.name);
       toggle.addEventListener('click', async () => {
         const store = await api.invoke('features.toggle', {
-          id: feature.id, enabled: !feature.raw,
+          id: feature.id, enabled: !feature.enabled,
         });
         features = store.features;
         footprint = store.footprint;
+        modes = await api.invoke('modes.list', {}).catch(() => modes);
         renderSection();
       });
 

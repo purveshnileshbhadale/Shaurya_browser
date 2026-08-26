@@ -126,3 +126,51 @@ body { background: var(--bg); overflow: hidden; }
 }
 .ob-nav { display: flex; gap: 9px; }
 .ob-foot .btn { padding: 9px 20px; }
+
+/* ---------------------------------------------------------------------------
+   Purpose picker (spec §11.3)
+   --------------------------------------------------------------------------- */
+
+.ob-purposes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.ob-purpose {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.ob-purpose:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+
+.ob-purpose.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ob-purpose-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text-secondary);
+}
+.ob-purpose.is-on .ob-purpose-icon { background: var(--accent); color: #fff; }
+.ob-purpose-icon svg { width: 18px; height: 18px; }
+
+.ob-purpose h3 { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+.ob-purpose p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }

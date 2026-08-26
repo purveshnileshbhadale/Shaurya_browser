@@ -59,6 +59,72 @@ of page would show beside the toolbar.
 
 ---
 
+## The Mode API
+
+The spec's constraint is explicit: modes must be "swappable panels/extensions
+registered against a common Mode API — never hardcoded UI branches". That is
+not decoration. Six modes with a `switch` in each component would be
+thirty-plus branches to keep consistent, and a user-built mode would have no
+branch at all to fall into.
+
+So a mode is a **document** (`services/modes.js`):
+
+```js
+{
+  id, name, tagline, icon, accent,
+  features:  { adblock: true, turbo: false, … },   // overlay on the Feature Store
+  appearance:{ theme, density, monoUi, backgroundFx },
+  panels:    ['stream', 'games', 'deals', 'perf', 'ai'],
+  quickActions: ['turbo', 'record', 'overlay'],
+  behaviors: { aggressiveHibernate: true },
+}
+```
+
+Three registries consume it, and none of them knows which modes exist:
+
+| Registry | Lives in | Keyed by |
+|---|---|---|
+| Panels | `ui/components/mode-panels.js` | panel id |
+| Quick actions | `ui/components/mode-switcher.js` | action id |
+| Chrome styling | `ui/styles/chrome.css` | `[data-mode]`, `[data-mono]`, `[data-fx]` |
+
+Adding a mode is a document plus, if it needs one, a panel. Adding a panel
+touches only the panel file. A mode naming a panel or action this build does
+not have skips it rather than throwing — which is what lets a custom mode
+written against a newer version load safely on an older one.
+
+### Why the overlay is the load-bearing part
+
+Three layers decide whether a feature is on, nearest wins:
+
+```
+1. user override for the active mode    settings.modes.overrides[modeId]
+2. the mode document's own overlay      mode.features
+3. the user's stored preference         settings.features     ← never written by a switch
+```
+
+If a mode *wrote* preferences, switching to Gamer and back would leave the
+user's own choices replaced by Gamer's, silently and permanently. The
+FeatureStore therefore takes an injected resolver and an override sink rather
+than importing the mode service — which also means the two can be constructed
+in either order, and the Feature Store remains testable with no modes at all.
+
+The same reasoning applies to appearance: a mode's theme is merged over the
+user's at read time and never stored, so leaving the mode restores their look
+exactly. Reduced motion is the one setting a mode cannot override, because
+that is an accessibility need rather than a style.
+
+### Why switching cannot lose a tab
+
+`activate()` writes one setting, re-points the overlay, and emits. It does not
+touch tabs, sessions, windows or profiles. Page views are siblings of the
+chrome in the `BaseWindow` view tree (see above), and the transition is a CSS
+crossfade on the chrome layer alone — so there is no code path in a mode
+switch that could close, reload or reparent a page. "No restart, no lost tabs"
+is a structural property here, not a thing to be careful about.
+
+---
+
 ## Three problems worth explaining
 
 ### `webRequest` allows one listener per event

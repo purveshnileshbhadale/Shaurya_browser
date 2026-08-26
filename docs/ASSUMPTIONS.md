@@ -173,6 +173,41 @@ own.
 
 ---
 
+## 6b. Mode decisions
+
+**A mode overlays, never writes.** Covered in `ARCHITECTURE.md`; restated here
+because it is the decision most likely to be got wrong by someone extending
+this. If you find yourself writing `settings.set('features', …)` from a mode,
+stop.
+
+**Default is defined as "no opinion".** Its `features` map is empty, and that
+empty object is load-bearing rather than a placeholder: it is what makes
+Default mean *the user's own configuration* instead of a sixth set of choices.
+
+**A custom mode is independent of the built-in it copied.** A live inheritance
+link would mean a future change to Gamer Mode silently rewriting a mode
+someone saved a year ago. The seed is a starting point.
+
+**Modes do not follow profiles by default.** `modes.rememberPerProfile` exists
+and is off: most people want one mode at a time, and a browser that changed
+its whole appearance because you switched profile to check an email would be
+startling.
+
+**Ghost Mode turns off history and sync, and this is not configurable through
+the mode.** A Ghost window that quietly recorded history would be worse than
+no Ghost Mode at all, because it would be trusted. (The features remain in the
+Feature Store; a user who deliberately overrides it in that mode is making an
+informed choice, and the switch says who set it.)
+
+**Where a mode feature cannot do the whole of what its name suggests, the
+panel says so.** Per-tab caps are a watchdog, not a hard limit — no browser
+can cap a renderer's CPU. Ping is a TCP handshake, not ICMP. DoH is
+browser-wide, not per-window. The overlay cannot draw over exclusive
+fullscreen. Each of those notes sits in the panel, not in this file, because
+the person who needs it is looking at the feature.
+
+---
+
 ## 7. What is not here
 
 Stated plainly, because a feature list that quietly omits its gaps is worse than
@@ -203,6 +238,26 @@ the APK to the `claude/apk-dist` branch, where retrieval is plain git.
 endpoints. The code that talks to them is real and complete; the servers are
 not in scope for a browser repository. The BYO WireGuard and Ollama paths work
 today with no account anywhere.
+
+**Some mode features are complete clients with nothing to talk to.** Listed
+plainly, because each is a place the panel is more honest than the feature
+name:
+
+| Feature | What is real | What is missing |
+|---|---|---|
+| Upload scheduler | The queue, the timing, the state machine | OAuth per platform. Items queue as `blocked` with the reason, never as `pending` |
+| Channel analytics | The panel | A connected channel |
+| Epic library | The free-games feed | Epic has **no public library API**; the panel says so instead of showing an empty list |
+| Cloud-save conflicts | Which titles support cloud saves | **No storefront exposes per-title save state**; that dialog is client-side only |
+| LFG | Steam friends currently in-game, with joinable lobbies | Other platforms have no equivalent public API |
+| Group study room | Pinning an existing room over your tabs | Aether does not host calls: no signalling, no TURN |
+| OCR search | Indexing, storage and search | No bundled engine (~15 MB WASM). Pages with a text layer are already searchable |
+| Tor | A real SOCKS5 route to a local daemon, and a verify button | Aether does not bundle Tor. Without one it **refuses** rather than falling back |
+| Terminal | A working shell in a dev profile | A PTY. Pipe-backed, so vim, htop and less will not render |
+| Postgres/MySQL | The full client | Their drivers, which are optional installs |
+
+The pattern throughout: implement the whole client, stop at the credential or
+the daemon, and say which one is missing.
 
 **Extension MV3 coverage is Electron's, not Chrome's.** Covered in §1.
 

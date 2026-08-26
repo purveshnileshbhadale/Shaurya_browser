@@ -52,6 +52,7 @@ const INVOKE = [
   // --- modes (spec §2 switcher, §5 custom modes) ------------------------
   'modes.list', 'modes.active', 'modes.activate', 'modes.create',
   'modes.update', 'modes.remove', 'modes.duplicate', 'modes.resetOverrides',
+  'modes.preview',
 
   // --- gaming (spec §4) -------------------------------------------------
   'perf.metrics', 'perf.turbo', 'perf.lowLatency', 'perf.tabUsage',

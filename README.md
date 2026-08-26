@@ -1,12 +1,13 @@
 # Aether
 
-A privacy-first, AI-native, developer-focused browser built on Chromium, with an
-Android companion.
+A Chromium browser that reconfigures itself around what you are doing.
 
-Ad and tracker blocking happens in Chromium's network stack. The assistant reads
-the tab you are on and asks before it acts. The developer tools you would
-otherwise install four extensions for are in the sidebar. Every heavy feature can
-be switched off individually.
+One control in the sidebar switches between **Programmer**, **Gamer**,
+**Creator**, **Student** and **Ghost** — changing which features are on, which
+panels the sidebar offers, and how the chrome looks. No restart, no lost tabs.
+Underneath every mode: ad blocking in the network stack, an assistant that
+reads the tab you are on and asks before it acts, and a Feature Store where
+every heavy subsystem is one switch.
 
 ```bash
 npm install
@@ -38,30 +39,65 @@ paragraph says otherwise.
 
 ---
 
+## The Mode Switcher
+
+A mode is a **document**, not a code path. It names which features are on,
+which panels the sidebar offers, how the chrome looks, and which runtime
+behaviours are armed. Nothing in the UI branches on `if (mode === 'gamer')` —
+which is what makes the sixth mode a data change rather than a refactor, and
+what makes a user-built mode work with no new machinery at all.
+
+| Mode | What changes |
+|---|---|
+| **Default** | The browser exactly as you configured it. No overlay at all. |
+| **Programmer** | DevTools, REST, GraphQL, sockets, containers, a terminal and a read-only database client. Dense, monospace, terminal-inspired. |
+| **Gamer** | Turbo, an FPS/hardware overlay, instant-replay clipping, an always-on-top stream player, deals and a ping tester. Animated accent chrome. |
+| **Creator** | Open-licensed asset search with attribution, a brand kit, thumbnail A/B against real feed sizes, a teleprompter and a focus canvas. |
+| **Student** | One-click citations in APA/MLA/Chicago, LMS deadline import, a Pomodoro timer with a network-layer blocker, AI flashcards. |
+| **Ghost** | Tor routing, per-tab fingerprint randomisation, metadata stripping, a shredder, a breach dashboard and a panic key. Minimal, visibly distinct chrome. |
+
+**Switching is an overlay, never a write.** Three layers resolve whether a
+feature is on — your override for that mode, the mode's own document, then
+your stored preference — and only the first two ever move. A round trip
+through Gamer Mode leaves Default byte-identical, and there are tests
+asserting exactly that, because the alternative is a switcher that quietly
+eats your configuration.
+
+Build your own from the Feature Store: pick a built-in to start from, tick
+what you want, and it appears in the switcher beside the others.
+
+---
+
 ## Verified behaviour
 
 `npm run smoke` boots the actual application under a virtual display, drives it
 through the same IPC the UI uses, and screenshots it. Latest run:
 
 ```
-28/28 checks passed
+35/35 checks passed
 
-  ok   bootstrap wires every declared IPC channel — 192 handlers
+  ok   bootstrap wires every declared IPC channel — 325 handlers
   ok   first run opens the onboarding flow — Welcome to Aether
-  ok   aether://start renders in a profile partition
-  ok   split view positions two live panes — 473px | 473px
-  ok   ad blocking is attached and the engine is loaded — 111800 block rules from 5 lists
-  ok   the web-request hub multiplexes every participant — adblock, https-only, vpn-killswitch
-  ok   a private window gets its own isolated session — two independent private contexts
-  ok   the REST client performs a real request — 200 in 18ms
-  ok   a static server refuses path traversal — blocked with 404
+  ok   ad blocking is attached and the engine is loaded — 112026 rules from 5 lists
+  ok   the web-request hub multiplexes every participant
+         — 5:focus-blocker, 10:adblock, 20:https-only, 30:vpn-killswitch
+  ok   every built-in mode activates and reconfigures the chrome
+         — default:3 programmer:3 gamer:5 creator:5 student:5 ghost:3
+  ok   switching modes does not disturb open tabs — 3 tabs survived 4 switches
+  ok   a mode overlays features without writing preferences
+  ok   Ghost Mode switches off everything that keeps a record
+  ok   a custom mode mixes features from two built-ins
+  ok   the mode switcher tracks the active mode and its panels
+         — Gamer 5 panels / 3 actions, Default 3 panels
+  ok   a private window gets its own isolated session
   ok   the vault encrypts, locks and reopens — 1 entry, file opaque
-  ok   disabling a feature cascades to its dependents — cascade both ways
+  ok   captures each mode's chrome — programmer, gamer, creator, student, ghost
 ```
 
-Plus 120 unit tests covering filter matching, layout geometry, vault crypto,
-sync crypto, WebSocket framing, the Markdown renderer, the manifest linter and
-omnibox resolution.
+Plus 242 unit tests covering filter matching, mode resolution, layout geometry,
+vault and sync crypto, WebSocket framing, the replay ring buffer, citation
+formatting, ICS parsing, EXIF stripping, the SQL read-only guard, feed parsing
+and mock pattern matching.
 
 ---
 
@@ -169,12 +205,20 @@ collection name is bound in as AEAD associated data, so a server that moves a
 record between collections produces a decryption failure rather than a
 confusing result.
 
-### Feature Store
+### Feature Store and custom modes
 
 Every heavy subsystem is one switch, with its runtime cost stated. Turning one
 off releases its resources — the VPN disconnects, servers stop, watchers close,
 the vault locks — and dependencies cascade in both directions, so the browser
 cannot land in a "REST client on, DevTools off" state.
+
+A switch a mode is driving says so, and toggling it inside that mode scopes the
+change to that mode rather than rewriting your preferences globally.
+
+The custom-mode builder mixes features from any built-in into a mode of your
+own, with its own name and icon. Because a custom mode is the same kind of
+document as a built-in, it needs no support code — it simply appears in the
+switcher.
 
 ---
 
@@ -239,6 +283,8 @@ scripts/           smoke test, tooling
 `docs/ARCHITECTURE.md` explains why the pieces are shaped the way they are.
 `docs/ASSUMPTIONS.md` records every decision the spec left open, and every place
 this build stops short of the spec — read that one before judging what is here.
+`docs/BUILD-PLAN.md` is the phased plan, with an honest status column marking
+what exists here and what needs a team, money or hardware.
 
 ---
 
@@ -250,13 +296,18 @@ another command.
 
 | | |
 |---|---|
+| `Ctrl/Cmd+M` | **Mode Switcher** (then `1`–`9` to pick one) |
+| `Ctrl/Cmd+Alt+M` | Next mode |
 | `Ctrl/Cmd+K` | Command palette |
 | `Ctrl/Cmd+B` | Toggle sidebar |
 | `Ctrl/Cmd+Alt+S` | Split screen |
 | `Ctrl/Cmd+Shift+A` | AI assistant |
 | `Ctrl/Cmd+Shift+G` | Generate notes from this page |
 | `Ctrl/Cmd+Shift+E` | REST client |
-| `Ctrl/Cmd+Shift+S` | Capture a region |
+| `Ctrl/Cmd+Alt+T` | Toggle Turbo |
+| `Ctrl/Cmd+Alt+C` | Save the last N seconds |
+| `Ctrl/Cmd+Alt+K` | Cite this page |
+| `Ctrl/Cmd+Alt+Shift+Backspace` | Panic — close and wipe |
 
 ---
 

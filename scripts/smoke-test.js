@@ -537,8 +537,8 @@ app.whenReady().then(async () => {
     return 'programmer + gamer features in one mode';
   });
 
-  await check('the mode switcher renders in the chrome', async () => {
-    const found = await win.shellView.webContents.executeJavaScript(`
+  await check('the mode switcher tracks the active mode and its panels', async () => {
+    const read = () => win.shellView.webContents.executeJavaScript(`
       (() => {
         const el = document.querySelector('.mode-switch');
         if (!el) return null;
@@ -546,12 +546,35 @@ app.whenReady().then(async () => {
           label: el.querySelector('.mode-label')?.textContent,
           mode: el.dataset.mode,
           panelButtons: document.querySelectorAll('.panel-buttons button').length,
+          quickActions: document.querySelectorAll('.quick-actions button').length,
         };
       })()
     `);
-    assert(found, 'the Mode Switcher control is not in the DOM');
-    assert(found.panelButtons > 0, 'the mode surfaced no panel buttons');
-    return `${found.label} · ${found.panelButtons} panel button(s)`;
+
+    assert(await read(), 'the Mode Switcher control is not in the DOM');
+
+    // Switch, then wait for the chrome to catch up. The renderer learns about
+    // a mode change through an event, so reading immediately after activating
+    // would assert against whatever it happened to be showing.
+    container.modes.activate('gamer');
+    const gamer = await until(async () => {
+      const found = await read();
+      return found?.mode === 'gamer' ? found : null;
+    }, { label: 'the switcher to show Gamer' });
+
+    assert(gamer.label === 'Gamer', `label said "${gamer.label}"`);
+    assert(gamer.panelButtons === 5, `Gamer surfaced ${gamer.panelButtons} panel buttons, expected 5`);
+    assert(gamer.quickActions === 3, `Gamer surfaced ${gamer.quickActions} quick actions, expected 3`);
+
+    container.modes.activate('default');
+    const back = await until(async () => {
+      const found = await read();
+      return found?.mode === 'default' ? found : null;
+    }, { label: 'the switcher to return to Default' });
+
+    assert(back.panelButtons === 3, `Default surfaced ${back.panelButtons} panel buttons, expected 3`);
+    return `Gamer ${gamer.panelButtons} panels / ${gamer.quickActions} actions, `
+      + `Default ${back.panelButtons} panels`;
   });
 
   // =======================================================================

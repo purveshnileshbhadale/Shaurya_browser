@@ -22,7 +22,32 @@ const choices = {
   theme: 'system',
   accent: '#6C8CFF',
   searchEngine: 'duckduckgo',
+  // The starting mode. `default` rather than null so a user who skips the
+  // question lands somewhere deliberate rather than somewhere accidental.
+  mode: 'default',
 };
+
+/**
+ * What the browser is for, in the user's words (spec §11.3).
+ *
+ * Wording matters here: these are activities, not product names. Someone
+ * arriving does not yet know what "Ghost Mode" is, but they know whether
+ * they are here to write code.
+ */
+const PURPOSES = [
+  { mode: 'programmer', icon: 'code', label: 'Write code',
+    detail: 'DevTools, a REST client, sockets, containers and a terminal, in a dense monospace chrome.' },
+  { mode: 'gamer', icon: 'gamepad', label: 'Game and stream',
+    detail: 'Turbo, an FPS overlay, instant-replay clips and an always-on-top stream player.' },
+  { mode: 'creator', icon: 'wand', label: 'Make things',
+    detail: 'Open-licensed assets, a brand kit, thumbnail A/B and a teleprompter.' },
+  { mode: 'student', icon: 'book', label: 'Study',
+    detail: 'One-click citations, PDF annotation, a focus timer and AI flashcards.' },
+  { mode: 'ghost', icon: 'ghost', label: 'Stay private',
+    detail: 'Tor routing, randomised fingerprints, metadata stripping and a panic key.' },
+  { mode: 'default', icon: 'globe', label: 'Just browse',
+    detail: 'The baseline browser. You can switch to any mode later — nothing is locked in.' },
+];
 
 const ICONS = {
   sparkle: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z',
@@ -38,6 +63,12 @@ const ICONS = {
   command: 'M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z',
   check: 'M4 12l5 5L20 6',
   device: 'M7 3h10v18H7zM11 18h2',
+  shuffle: 'M4 7h4l8 10h4M4 17h4l2-2.5M16 7h4M18 5l2 2-2 2M18 15l2 2-2 2',
+  gamepad: 'M7 12h4M9 10v4M15 11h.01M17.5 13h.01M6.5 7h11a4.5 4.5 0 0 1 4.4 5.4l-.9 4.5A2.6 2.6 0 0 1 16.5 18L15 16H9l-1.5 2a2.6 2.6 0 0 1-4.5-1.1l-.9-4.5A4.5 4.5 0 0 1 6.5 7z',
+  wand: 'M4 20L16 8M14 4l1.2 2.8L18 8l-2.8 1.2L14 12l-1.2-2.8L10 8l2.8-1.2zM19 14l.7 1.6L21 16l-1.3.4L19 18l-.7-1.6L17 16l1.3-.4z',
+  ghost: 'M5 21V10a7 7 0 0 1 14 0v11l-2.3-2-2.4 2-2.3-2-2.3 2-2.4-2zM9.5 10h.01M14.5 10h.01',
+  book: 'M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 3v18',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z',
 };
 
 // ---------------------------------------------------------------------------
@@ -64,6 +95,18 @@ const steps = [
         ]),
         promise(),
       ],
+    }),
+  },
+
+  {
+    id: 'purpose',
+    render: () => step({
+      icon: 'shuffle',
+      title: 'What are you here to do?',
+      lede: 'Aether reconfigures itself around the work in front of you. Pick a starting '
+        + 'point — the switcher in the sidebar changes it any time, without closing a '
+        + 'single tab.',
+      body: [purposeGrid()],
     }),
   },
 
@@ -168,6 +211,39 @@ function step({ icon: iconName, title, lede, body }) {
   const mark = el('div', 'ob-mark');
   mark.appendChild(svg(ICONS[iconName]));
   wrap.append(mark, el('h1', '', title), el('p', 'lede', lede), ...body);
+  return wrap;
+}
+
+/**
+ * The purpose picker.
+ *
+ * Single-select rather than multi: a starting mode is one thing, and offering
+ * "both" here would produce a mode nobody asked for. The copy says the
+ * switcher changes it later, which is the honest reassurance — this is a
+ * starting point, not a commitment.
+ */
+function purposeGrid() {
+  const wrap = el('div', 'ob-purposes');
+
+  const render = () => {
+    wrap.replaceChildren();
+    for (const purpose of PURPOSES) {
+      const card = el('button',
+        `ob-purpose${choices.mode === purpose.mode ? ' is-on' : ''}`);
+      const badge = el('div', 'ob-purpose-icon');
+      badge.appendChild(svg(ICONS[purpose.icon] || ICONS.sparkle));
+      const copy = el('div');
+      copy.append(el('h3', '', purpose.label), el('p', '', purpose.detail));
+      card.append(badge, copy);
+      card.addEventListener('click', () => {
+        choices.mode = purpose.mode;
+        render();
+      });
+      wrap.appendChild(card);
+    }
+  };
+
+  render();
   return wrap;
 }
 

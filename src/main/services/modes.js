@@ -544,6 +544,39 @@ class ModeService extends EventEmitter {
   behavior(name) {
     return this.active().behaviors?.[name] === true;
   }
+
+  /**
+   * What *would* be on under a given mode, without activating it.
+   *
+   * The custom-mode builder needs this: seeding the picker from "based on
+   * Gamer" by briefly activating Gamer would flicker the user's chrome and
+   * fire every mode-change side effect for a preview they might discard.
+   *
+   * @param {string} modeId
+   * @returns {{id: string, features: Record<string, boolean>}}
+   */
+  preview(modeId) {
+    const doc = this.byId(modeId);
+    if (!doc) throw new Error(`unknown mode "${modeId}"`);
+
+    const overlay = { ...(doc.features || {}), ...this._overridesFor(modeId) };
+    const resolved = {};
+    for (const feature of this.features.catalog) {
+      if (feature.core) { resolved[feature.id] = true; continue; }
+      resolved[feature.id] = typeof overlay[feature.id] === 'boolean'
+        ? overlay[feature.id]
+        : this.features.base(feature.id);
+    }
+
+    // Apply the same dependency rule the Feature Store applies, so a preview
+    // cannot show a state the browser would never actually be in.
+    for (const feature of this.features.catalog) {
+      if (!resolved[feature.id]) continue;
+      if ((feature.requires || []).some((dep) => !resolved[dep])) resolved[feature.id] = false;
+    }
+
+    return { id: modeId, name: doc.name, features: resolved };
+  }
 }
 
 /** Copy only the listed keys, skipping undefined so a patch stays a patch. */

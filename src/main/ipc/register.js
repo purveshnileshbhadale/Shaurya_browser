@@ -264,6 +264,7 @@ function registerHandlers(c) {
     remove: (p) => c.modes.remove(p.id),
     duplicate: (p) => { c.modes.duplicate(p.id, p.name); return c.modes.snapshot(); },
     resetOverrides: (p) => c.modes.resetOverrides(p?.id),
+    preview: (p) => c.modes.preview(p.id),
   });
 
   ipc.handleAll('onboarding', {
