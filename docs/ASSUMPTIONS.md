@@ -192,6 +192,13 @@ screenshotted**; the Android APK has been compiled but **not run on a device or
 emulator**, so its runtime behaviour is unverified in a way the desktop's is
 not.
 
+**The APK is published twice, deliberately.** Actions artifacts are served from
+a short-lived, authenticated blob host (`*.blob.core.windows.net`) that is
+denied by a fair number of corporate and sandboxed egress policies — including
+the one this was built under. A download path that fails for the person holding
+full repository access is not a download path, so the workflow also force-pushes
+the APK to the `claude/apk-dist` branch, where retrieval is plain git.
+
 **No hosted services.** The VPN, sync and AI all point at configurable
 endpoints. The code that talks to them is real and complete; the servers are
 not in scope for a browser repository. The BYO WireGuard and Ollama paths work
