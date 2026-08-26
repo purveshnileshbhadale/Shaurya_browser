@@ -289,6 +289,233 @@ function registerHandlers(c) {
     },
   });
 
+  // =========================================================================
+  // Gaming (spec §4)
+  // =========================================================================
+
+  ipc.handleAll('perf', {
+    metrics: () => c.performance.metrics(),
+    tabUsage: () => c.performance.tabUsage(),
+    turbo: (p) => c.performance.setTurbo(p?.on, {
+      deps: { extensions: c.extensions, sync: c.sync },
+    }),
+    lowLatency: (p) => c.performance.setLowLatency(p?.on),
+    setTabCap: (p) => c.performance.setTabCap(p.tabId || p.host, p),
+    clearTabCap: (p) => c.performance.clearTabCap(p.tabId || p.host),
+    overlay: () => c.overlay.state(),
+  });
+
+  ipc.handleAll('overlay', {
+    state: () => c.overlay.state(),
+    toggle: () => c.overlay.toggle(),
+    update: (p) => c.overlay.update(p || {}),
+  });
+
+  ipc.handleAll('gamepad', {
+    state: () => c.overlay.bindings(),
+    bind: (p) => c.overlay.bind(p.input, p.command),
+    reset: () => c.overlay.resetBindings(),
+  });
+
+  ipc.handleAll('recorder', {
+    state: () => c.recorder.state(),
+    start: (p) => c.recorder.start(p || {}),
+    stop: () => c.recorder.stop(),
+    clip: (p) => c.recorder.clip(p || {}),
+    setReplaySeconds: (p) => c.recorder.setReplaySeconds(p.seconds),
+    list: () => c.gallery.list(),
+    reveal: (p) => c.gallery.reveal(p.path),
+  });
+
+  ipc.handleAll('gallery', {
+    list: () => c.gallery.list(),
+    remove: (p) => c.gallery.remove(p.path),
+    reveal: (p) => c.gallery.reveal(p.path),
+  });
+
+  ipc.handleAll('stream', {
+    list: () => c.streams.state(),
+    open: (p) => c.streams.open(p || {}),
+    close: () => c.streams.close(),
+    add: (p) => c.streams.add(p),
+    remove: (p) => c.streams.remove(p),
+  });
+
+  ipc.handleAll('games', {
+    library: () => c.gameFeeds.steamLibrary(),
+    presence: () => c.gameFeeds.presence(),
+    feeds: () => c.gameFeeds.snapshot(),
+    addFeed: (p) => c.gameFeeds.addFeed(p.url),
+    removeFeed: (p) => c.gameFeeds.removeFeed(p.url),
+    refresh: () => c.gameFeeds.refreshPatchNotes(),
+  });
+
+  ipc.handleAll('deals', {
+    list: () => c.deals.watchlist(),
+    search: (p) => c.deals.search(p.query),
+    watch: (p) => c.deals.watch(p),
+    unwatch: (p) => c.deals.unwatch(p.gameId),
+    refresh: () => c.deals.refresh(),
+  });
+
+  ipc.handleAll('ping', {
+    regions: () => c.ping.state(),
+    test: (p) => c.ping.testAll(p || {}),
+    watch: (p) => c.ping.startWatch(p.regionId),
+    stopWatch: () => c.ping.stopWatch(),
+    addRegion: (p) => c.ping.addRegion(p),
+    removeRegion: (p) => c.ping.removeRegion(p.id),
+  });
+
+  // =========================================================================
+  // Programmer depth (spec §3)
+  // =========================================================================
+
+  ipc.handleAll('terminal', {
+    // The profile is resolved from the calling window rather than trusted
+    // from the payload, so the dev-profile restriction cannot be bypassed by
+    // naming a different profile id.
+    open: (p, ctx) => c.terminal.open({
+      profileId: win(ctx)?.profileId, cwd: p?.cwd,
+    }),
+    write: (p) => c.terminal.write(p.id, p.data),
+    signal: (p) => c.terminal.signal(p.id, p.signal),
+    close: (p) => c.terminal.close(p.id),
+    list: () => c.terminal.list(),
+    scrollback: (p) => ({ text: c.terminal.scrollback(p.id) }),
+  });
+
+  ipc.handleAll('db', {
+    drivers: () => c.db.drivers(),
+    connect: (p) => c.db.connect(p),
+    query: (p) => c.db.query(p.id, p.sql),
+    schema: (p) => c.db.schema(p.id),
+    close: (p) => c.db.close(p.id),
+    list: () => c.db.list(),
+  });
+
+  ipc.handleAll('graphql', {
+    state: () => c.graphql.state(),
+    addEndpoint: (p) => c.graphql.addEndpoint(p),
+    removeEndpoint: (p) => c.graphql.removeEndpoint(p.url),
+    introspect: (p, ctx) => c.graphql.introspect(p.url, { ...p, profileId: win(ctx)?.profileId }),
+    execute: (p, ctx) => c.graphql.execute({ ...p, profileId: win(ctx)?.profileId }),
+    clearHistory: () => c.graphql.clearHistory(),
+  });
+
+  ipc.handleAll('docker', {
+    available: (p) => c.docker.available(p || {}),
+    containers: (p) => c.docker.containers(p || {}),
+    logs: (p) => c.docker.logs(p.id, p),
+  });
+
+  ipc.handleAll('snippets', {
+    list: (p) => c.snippets.list(p || {}),
+    save: (p) => c.snippets.save(p),
+    remove: (p) => c.snippets.remove(p.id),
+    resolve: (p) => c.snippets.resolve(p.id, p.values),
+  });
+
+  ipc.handleAll('mocks', {
+    list: () => c.mocking.rules(),
+    save: (p) => c.mocking.save(p),
+    remove: (p) => c.mocking.remove(p.id),
+    toggle: (p) => c.mocking.toggle(p.id, p.enabled),
+  });
+
+  ipc.handleAll('depwatch', {
+    analyse: (p) => c.depwatch.analyse(p.filename, p.text),
+  });
+
+  // =========================================================================
+  // Creator (spec §5)
+  // =========================================================================
+
+  ipc.handleAll('creator', {
+    state: () => c.creator.snapshot(),
+    search: (p) => c.creator.search(p || {}),
+    sources: () => c.creator.assetSources(),
+    saveKit: (p) => c.creator.saveBrandKit(p),
+    removeKit: (p) => c.creator.removeBrandKit(p.id),
+    applyValue: (p, ctx) => c.creator.applyBrandValue(activeTab(ctx), p.value),
+    thumbnails: () => c.creator.thumbnailComparison(),
+    setThumbnail: (p) => c.creator.setThumbnailSlot(p.index, p.path),
+    scripts: () => c.creator.scripts(),
+    saveScript: (p) => c.creator.saveScript(p),
+    removeScript: (p) => c.creator.removeScript(p.id),
+    schedule: (p) => c.creator.schedule(p),
+    unschedule: (p) => c.creator.unschedule(p.id),
+    analytics: () => c.creator.analytics(),
+    focusCanvas: () => c.creator.focusCanvas(),
+    setFocusCanvas: (p) => c.creator.setFocusCanvas(p.active),
+  });
+
+  // =========================================================================
+  // Student (spec §6)
+  // =========================================================================
+
+  ipc.handleAll('student', {
+    library: () => c.student.library(),
+    capture: (_p, ctx) => c.student.captureSource(activeTab(ctx)),
+    updateSource: (p) => c.student.updateSource(p.id, p.patch),
+    removeSource: (p) => c.student.removeSource(p.id),
+    cite: (p) => c.student.cite(p.id, p.style),
+    exportBibliography: (p) => c.student.exportBibliography(p?.style, p?.ids),
+
+    timer: () => c.student.timerState(),
+    startTimer: (p) => c.student.startTimer(p || {}),
+    stopTimer: () => c.student.stopTimer(),
+    blockList: () => ({ hosts: c.student.blockList(), presets: c.student.timerPresets() }),
+    setBlockList: (p) => c.student.setBlockList(p.hosts),
+    setSiteLimit: (p) => c.student.setSiteLimit(p.host, p.minutes),
+
+    decks: () => c.student.decks(),
+    generateDeck: (p, ctx) => c.student.generateDeck({ ...p, tab: p?.text ? null : activeTab(ctx) }),
+    removeDeck: (p) => c.student.removeDeck(p.id),
+    reviewCard: (p) => c.student.reviewCard(p.deckId, p.cardId, p.correct),
+
+    annotations: (p) => ({ annotations: c.student.annotations(p.docKey) }),
+    addAnnotation: (p) => c.student.addAnnotation(p.docKey, p.annotation),
+    removeAnnotation: (p) => c.student.removeAnnotation(p.docKey, p.id),
+    searchNotes: (p) => ({ hits: c.student.searchNotes(p.query) }),
+    storeOcr: (p) => c.student.storeOcr(p.docKey, p.page, p.text),
+    ocrStatus: () => c.student.ocrStatus(),
+
+    deadlines: () => c.student.deadlines(),
+    importFeed: (p) => c.student.importFeed(p.url),
+    removeFeed: (p) => c.student.removeFeed(p.url),
+    room: () => c.student.studyRoom(),
+    setRoom: (p) => c.student.setStudyRoom(p),
+  });
+
+  // =========================================================================
+  // Ghost (spec §7)
+  // =========================================================================
+
+  ipc.handleAll('ghost', {
+    status: () => c.ghost.status(),
+    torAvailable: (p) => c.ghost.torAvailable(p || {}),
+    routeTor: async (p, ctx) => {
+      const window = win(ctx);
+      const session = c.profiles.sessionFor(window?.profileId);
+      return c.ghost.routeThroughTor(session, p || {});
+    },
+    verifyTor: async (_p, ctx) => {
+      const session = c.profiles.sessionFor(win(ctx)?.profileId);
+      return c.ghost.verifyTor(session);
+    },
+    dohProviders: () => c.ghost.dohProviders(),
+    setDoh: (p) => c.ghost.setDoh(p),
+    stripFile: (p) => c.ghost.stripFile(p.path),
+    shredFile: (p) => c.ghost.shredFile(p.path, p),
+    shredderCaveat: () => c.ghost.shredderCaveat(),
+    breachReport: () => c.ghost.breachReport(),
+    runBreachScan: () => c.ghost.runBreachScan(),
+    // Scoped from the calling window: "this window" must mean the one the
+    // user pressed the key in, never one named in a payload.
+    panic: (p, ctx) => c.ghost.panic({ scope: p?.scope, windowId: win(ctx)?.id }),
+  });
+
   ipc.handleAll('profiles', {
     list: () => c.profiles.list(),
     create: (p) => c.profiles.create(p || {}),

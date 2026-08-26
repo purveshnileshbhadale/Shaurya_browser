@@ -288,21 +288,26 @@ class GhostService extends EventEmitter {
     this.emit('breach', this._breachReport);
 
     const entries = [];
+    let unchecked = 0;
     try {
       for (const entry of this.vault.list()) {
         // eslint-disable-next-line no-await-in-loop
         const secret = await this.vault.reveal(entry.id).catch(() => null);
         if (!secret?.password) continue;
+        // Returns an occurrence count, 0 for clean, or -1 when the lookup
+        // itself failed — which must not be reported as "not breached".
         // eslint-disable-next-line no-await-in-loop
-        const found = await this.breach.check(secret.password).catch(() => null);
-        if (found && found.count > 0) {
+        const count = await this.breach.checkPassword(secret.password).catch(() => -1);
+        if (count > 0) {
           entries.push({
             id: entry.id,
             site: entry.site,
             username: entry.username,
-            count: found.count,
-            severity: found.count > 100_000 ? 'high' : found.count > 1000 ? 'medium' : 'low',
+            count,
+            severity: count > 100_000 ? 'high' : count > 1000 ? 'medium' : 'low',
           });
+        } else if (count < 0) {
+          unchecked += 1;
         }
       }
       this._breachReport = {
@@ -310,6 +315,10 @@ class GhostService extends EventEmitter {
         entries,
         running: false,
         total: this.vault.list().length,
+        // A lookup that failed is not a clean result, and a dashboard that
+        // silently counted it as one would be telling the user they are safe
+        // on the strength of a network error.
+        unchecked,
       };
     } catch (err) {
       this._breachReport = { ...this._breachReport, running: false, error: err.message };
@@ -341,8 +350,8 @@ class GhostService extends EventEmitter {
 
     const wm = this.windowManager;
     const targets = scope === 'browser'
-      ? (wm?.windows() || [])
-      : [wm?.byId?.(windowId) || wm?.focused()].filter(Boolean);
+      ? (wm?.list() || [])
+      : [wm?.get(windowId) || wm?.focused()].filter(Boolean);
 
     const sessions = new Set();
     for (const win of targets) {

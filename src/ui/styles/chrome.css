@@ -709,3 +709,267 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
 }
+
+/* ===========================================================================
+   Mode Switcher (spec §2)
+   ===========================================================================
+   The control sits in the sidebar header, where it reads as "what is this
+   window for" rather than as another toolbar button competing with navigation.
+*/
+
+.mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+  flex: none;
+  transition: background var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease);
+}
+
+.mode-switch:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+
+.mode-switch .mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mode-accent, var(--accent));
+  flex: none;
+  /* A soft ring rather than a hard dot: legible against both surfaces
+     without needing a per-theme colour. */
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--mode-accent, var(--accent)) 22%, transparent);
+}
+
+.mode-switch svg { width: 12px; height: 12px; opacity: 0.5; }
+.mode-label { white-space: nowrap; }
+
+/* Default mode is the resting state and should not shout. */
+.mode-switch[data-mode="default"] .mode-dot { background: var(--text-tertiary); box-shadow: none; }
+
+/* ---- the menu ---- */
+
+.mode-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 290px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg, var(--shadow));
+  animation: mode-menu-in var(--dur-fast) var(--ease);
+}
+
+@keyframes mode-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+[data-animations="off"] .mode-menu { animation: none; }
+
+.mode-menu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mode-row:hover { background: var(--bg-hover); }
+.mode-row[data-active="true"] { background: var(--accent-soft); }
+
+.mode-row-icon { display: flex; flex: none; color: var(--text-secondary); }
+.mode-row-icon svg { width: 16px; height: 16px; }
+.mode-row[data-active="true"] .mode-row-icon { color: var(--accent); }
+
+.mode-row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.mode-row-name { font-size: 13px; font-weight: 550; }
+.mode-row-tagline {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mode-row-key,
+.mode-menu-head kbd {
+  flex: none;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-sunken);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.mode-row-badge {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.mode-menu-sep { height: 1px; margin: 5px 4px; background: var(--divider); }
+.mode-row-quiet .mode-row-name { color: var(--text-secondary); font-weight: 500; }
+
+/* ---- the transition ---- */
+
+/* A crossfade over the chrome only. Page views are siblings of the chrome in
+   the main process's view tree, so nothing here can touch a tab — which is
+   what makes "no lost tabs" structural rather than careful. */
+#shell {
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.mode-switching #shell {
+  animation: mode-crossfade 220ms var(--ease);
+}
+
+@keyframes mode-crossfade {
+  0%   { opacity: 1; }
+  35%  { opacity: 0.55; }
+  100% { opacity: 1; }
+}
+
+[data-animations="off"] .mode-switching #shell { animation: none; }
+
+/* ---- quick actions ---- */
+
+.quick-action[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.quick-action[data-danger="true"]:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ===========================================================================
+   Mode-scoped chrome
+   ===========================================================================
+   Each block below is the entire visual difference a mode makes. A new mode
+   adds a block here; it does not touch a component.
+*/
+
+/* Programmer: dense, monospace-optional, terminal-inspired. */
+[data-mono="on"] {
+  --font-ui: var(--font-mono);
+}
+[data-mono="on"] .tab-title,
+[data-mono="on"] .omnibox-input,
+[data-mono="on"] .omnibox-display,
+[data-mono="on"] .mode-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+[data-mode="programmer"] .tab-row { --tab-h: 28px; }
+[data-mode="programmer"] .panel-head { text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+
+/* Gamer: animated accent wash behind the chrome. Compositor-only —
+   a background-position animation on a gradient never touches layout. */
+[data-fx="rgb"] #sidebar,
+[data-fx="rgb"] #toolbar {
+  background-image: linear-gradient(
+    115deg,
+    color-mix(in oklab, var(--accent) 16%, transparent) 0%,
+    transparent 35%,
+    transparent 65%,
+    color-mix(in oklab, var(--accent) 12%, transparent) 100%);
+  background-size: 300% 100%;
+  animation: rgb-drift 14s linear infinite;
+}
+
+@keyframes rgb-drift {
+  from { background-position: 0% 0; }
+  to   { background-position: 300% 0; }
+}
+
+[data-animations="off"] [data-fx="rgb"] #sidebar,
+[data-animations="off"] [data-fx="rgb"] #toolbar,
+[data-fx="none"] #sidebar,
+[data-fx="none"] #toolbar { animation: none; background-image: none; }
+
+/* Ghost: minimal chrome, visibly distinct, so a Ghost window is never
+   mistaken for an ordinary one (spec §7). */
+[data-mode="ghost"] {
+  --bg: #0b0d10;
+  --bg-elevated: #121519;
+  --bg-sunken: #08090b;
+  --border: rgba(148, 163, 184, 0.18);
+}
+
+[data-mode="ghost"] #toolbar {
+  border-bottom: 1px solid color-mix(in oklab, var(--private) 40%, transparent);
+}
+
+[data-mode="ghost"] #sidebar-head::after {
+  content: "GHOST";
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--private) 22%, transparent);
+  color: var(--private);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+[data-mode="ghost"] .icon-btn { border-radius: 4px; }
+
+/* Creator: focus canvas hides every piece of chrome except the page. */
+[data-focus-canvas="true"] #sidebar,
+[data-focus-canvas="true"] #toolbar,
+[data-focus-canvas="true"] #tabstrip { display: none; }
+
+#mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px 8px;
+  flex: none;
+}
+
+.quick-actions { display: flex; gap: 2px; margin-left: auto; }
+.quick-actions .icon-btn { width: 26px; height: 26px; }
+.quick-actions .icon-btn svg { width: 14px; height: 14px; }

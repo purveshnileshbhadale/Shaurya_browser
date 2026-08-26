@@ -8,6 +8,7 @@
  */
 import { h, icon, clear, delegate, formatBytes, formatRelative } from '../core/dom.js';
 import { state, subscribe, invoke, toast, selectors } from '../core/store.js';
+import { MODE_PANELS } from './mode-panels.js';
 
 export function createPanel({ container }) {
   let current = null;
@@ -31,14 +32,31 @@ export function createPanel({ container }) {
     clear(body);
     disposeContent?.();
 
-    const view = VIEWS[kind];
+    // Baseline panels first, then whatever the mode registry offers. A mode
+    // document names ids; neither this host nor the mode service knows which
+    // panels belong to which mode.
+    const view = VIEWS[kind] || MODE_PANELS[kind];
     if (!view) {
       body.appendChild(h('div.empty', {}, `Unknown panel "${kind}"`));
       return;
     }
-    title.append(icon(view.icon), h('span', { text: view.label }));
-    disposeContent = view.render(body);
 
+    title.append(icon(view.icon), h('span', { text: view.label }));
+
+    // A mode can surface a panel whose feature the user has switched off.
+    // Saying so beats rendering a panel whose every button will fail.
+    if (view.feature && !selectors.feature(view.feature)) {
+      body.appendChild(h('div.empty', {},
+        h('p', { text: `${view.label} is switched off in the Feature Store.` }),
+        h('button.btn', {
+          onclick: () => invoke('features.toggle', { id: view.feature, enabled: true })
+            .then(() => { current = null; open(kind); }),
+        }, h('span', { text: `Turn on ${view.label}` }))));
+      invoke('layout.setPanel', { kind });
+      return;
+    }
+
+    disposeContent = view.render(body);
     invoke('layout.setPanel', { kind });
   }
 

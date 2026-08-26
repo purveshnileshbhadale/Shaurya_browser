@@ -156,7 +156,7 @@ class PerformanceService extends EventEmitter {
     if (!this.windowManager) return [];
     const rows = [];
 
-    for (const win of this.windowManager.windows()) {
+    for (const win of this.windowManager.list()) {
       for (const tab of win.tabs.list()) {
         if (tab.hibernated) {
           rows.push({
@@ -230,7 +230,7 @@ class PerformanceService extends EventEmitter {
       this._turboExtensions = [];
 
       if (policy.suspendBackgroundTabs !== false) {
-        for (const win of this.windowManager?.windows() || []) {
+        for (const win of this.windowManager?.list() || []) {
           const visible = new Set([win.tabs.activeId, ...(win.tabs._visible || [])]);
           for (const tab of win.tabs.list()) {
             if (visible.has(tab.id) || tab.hibernated) continue;

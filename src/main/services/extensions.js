@@ -208,6 +208,41 @@ class ExtensionService extends EventEmitter {
     return this.store.data.installed.map((r) => ({ ...r }));
   }
 
+  /**
+   * Unload every enabled extension, returning the ids that were touched.
+   *
+   * Used by Turbo (spec §4). The `enabled` flag is deliberately *not*
+   * written: this is a temporary suspension, and persisting it would mean a
+   * crash while Turbo was on left the user's extensions permanently off with
+   * no record of why.
+   *
+   * @returns {Promise<string[]>} ids to hand back to `resume()`
+   */
+  async suspendAll() {
+    const suspended = [];
+    for (const record of this.store.data.installed) {
+      if (!record.enabled || !record.id) continue;
+      for (const sess of this._sessions) {
+        try { sess.extensions.removeExtension(record.id); } catch { /* not loaded here */ }
+      }
+      suspended.push(record.id);
+    }
+    if (suspended.length) this.emit('changed', this.list());
+    return suspended;
+  }
+
+  /** Reload exactly the extensions `suspendAll()` unloaded. */
+  async resume(ids = []) {
+    for (const id of ids) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await this.reload(id);
+      } catch { /* an extension removed while suspended is simply gone */ }
+    }
+    if (ids.length) this.emit('changed', this.list());
+    return this.list();
+  }
+
   /** Open the Chrome Web Store, which installs into the current profile. */
   openStore() {
     return 'https://chromewebstore.google.com/';

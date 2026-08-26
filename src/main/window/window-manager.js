@@ -103,6 +103,21 @@ class WindowManager extends EventEmitter {
     return null;
   }
 
+  /**
+   * Find the window and tab that own a *tab* id.
+   *
+   * Distinct from `locateTab`, which takes a WebContents id: a hibernated tab
+   * has no WebContents at all but still has an id, and the performance and
+   * cap services need to find it.
+   */
+  locateTabById(tabId) {
+    for (const win of this.windows.values()) {
+      const tab = win.tabs.get(tabId);
+      if (tab) return { window: win, tab };
+    }
+    return null;
+  }
+
   /** Broadcast an event to every window's chrome. */
   broadcast(channel, payload) {
     for (const win of this.windows.values()) win.send(channel, payload);

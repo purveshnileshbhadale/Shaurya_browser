@@ -44,6 +44,27 @@ export const state = {
   toast: null,
   version: null,
   onboarding: null,
+
+  // --- modes (spec §2) and the mode-scoped services --------------------
+  modes: {
+    activeId: 'default',
+    active: null,
+    modes: [],
+    appearance: {},
+    panels: ['ai', 'notes'],
+    quickActions: [],
+    behaviors: {},
+  },
+  perf: { system: null, tabs: [], turbo: { on: false }, overlay: null },
+  recorder: { recording: false, bufferArmed: false },
+  streams: { open: false, saved: [] },
+  games: { library: [], patchNotes: [], presence: {} },
+  deals: { watched: [], deals: [] },
+  creator: { kits: { kits: [] }, queue: [], scripts: [] },
+  student: { sources: [], timer: { running: false }, decks: [], deadlines: null },
+  ghost: { tor: {}, doh: {}, breach: {} },
+  devtools: { docker: null, mocks: [], snippets: null, graphql: null },
+  terminal: { sessions: [], output: {} },
 };
 
 /**
@@ -161,6 +182,9 @@ export async function boot() {
   set('adblock', initial.adblock);
   set('version', initial.version);
   set('onboarding', initial.onboarding);
+  // Seeded before the first applyTheme() below, so the window paints in the
+  // active mode's chrome rather than flashing Default and correcting itself.
+  if (initial.modes) set('modes', initial.modes);
 
   wireEvents();
   applyTheme();
@@ -194,7 +218,35 @@ function wireEvents() {
     set('settings', await invoke('settings.get', {}, { quiet: true }));
     applyTheme();
   });
-  on('features:changed', (features) => set('features', features));
+  on('features:changed', (payload) => {
+    // The main process sends either the bare list or { features, footprint }
+    // depending on which path announced the change.
+    if (Array.isArray(payload)) set('features', payload);
+    else {
+      if (payload.features) set('features', payload.features);
+      if (payload.footprint) set('footprint', payload.footprint);
+    }
+  });
+
+  // --- modes -----------------------------------------------------------
+  on('modes:changed', (snapshot) => {
+    set('modes', snapshot);
+    applyTheme();
+  });
+
+  on('perf:metrics', (m) => update('perf', (p) => ({ ...p, ...m })));
+  on('perf:tabUsage', (tabs) => update('perf', (p) => ({ ...p, tabs })));
+  on('perf:turbo', (t) => update('perf', (p) => ({ ...p, turbo: { ...p.turbo, ...t } })));
+  on('recorder:state', (s) => set('recorder', s));
+  on('recorder:clip', (file) => toast(`Saved ${file.kind} to ${file.path}`, 'success'));
+  on('stream:changed', (s) => set('streams', s));
+  on('games:changed', (s) => update('games', (g) => ({ ...g, ...s })));
+  on('deals:changed', (s) => update('deals', (d) => ({ ...d, ...s })));
+  on('creator:changed', (s) => update('creator', (c) => ({ ...c, ...s })));
+  on('student:changed', (s) => update('student', (st) => ({ ...st, ...s })));
+  on('student:timer', (t) => update('student', (st) => ({ ...st, timer: t })));
+  on('ghost:changed', (s) => update('ghost', (g) => ({ ...g, ...s })));
+  on('devtools:changed', (s) => update('devtools', (d) => ({ ...d, ...s })));
   on('profiles:changed', (profiles) => set('profiles', profiles));
 
   on('adblock:count', (stats) => set('adblock', stats));
@@ -265,8 +317,18 @@ function wireEvents() {
 
 /** Push theme, accent and density onto the document element. */
 export function applyTheme() {
-  const appearance = state.settings.appearance || {};
+  // The *resolved* appearance: a mode's presentation folded over the user's
+  // own settings. Falling back to raw settings keeps this correct during the
+  // first paint, before the mode snapshot has arrived.
+  const appearance = { ...(state.settings.appearance || {}), ...(state.modes?.appearance || {}) };
   const root = document.documentElement;
+
+  // Drives mode-scoped styling — the dense terminal chrome, the animated
+  // Gamer background, the stripped-back Ghost frame — from one attribute,
+  // so a new mode needs a CSS block rather than a code change.
+  root.dataset.mode = state.modes?.activeId || 'default';
+  root.dataset.mono = appearance.monoUi === true ? 'on' : 'off';
+  root.dataset.fx = appearance.backgroundFx || 'none';
 
   root.dataset.theme = appearance.theme === 'system' ? '' : (appearance.theme || '');
   if (!root.dataset.theme) delete root.dataset.theme;

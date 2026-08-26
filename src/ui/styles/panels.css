@@ -375,3 +375,246 @@
   margin: 0;
   white-space: pre-wrap;
 }
+
+/* ===========================================================================
+   Mode panels (spec §3-§7)
+   ===========================================================================
+   Deliberately one shared vocabulary — section, stat row, list row, note —
+   rather than bespoke styling per mode. A custom mode mixes panels from
+   several built-ins into one sidebar, and they have to look like they belong
+   to the same browser when it does.
+*/
+
+.panel-section { padding: 12px 14px; border-bottom: 1px solid var(--divider); }
+.panel-section:last-child { border-bottom: 0; }
+
+.panel-section-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+}
+
+/* A stated limit, not an error: these explain honest boundaries. */
+.panel-note {
+  display: flex;
+  gap: 7px;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.panel-note svg { width: 13px; height: 13px; flex: none; margin-top: 2px; opacity: 0.7; }
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 12px;
+}
+.stat-label { color: var(--text-secondary); }
+.stat-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.stat-row[data-tone="ok"] .stat-value { color: var(--success); }
+.stat-row[data-tone="warn"] .stat-value { color: var(--warning); }
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--divider);
+  font-size: 12px;
+}
+.list-row:last-child { border-bottom: 0; }
+.list-row-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-row-sub { color: var(--text-tertiary); font-size: 11px; flex: none; }
+.list-row-warn { color: var(--warning); font-size: 11px; }
+.list-row[data-status="blocked"] { opacity: 0.75; }
+.list-row[data-severity="high"] .list-row-main { color: var(--danger); }
+
+.row { display: flex; gap: 6px; align-items: center; }
+.row .input { flex: 1; min-width: 0; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* ---- Turbo ---- */
+
+.big-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.big-toggle[data-on="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.big-toggle svg { width: 18px; height: 18px; }
+
+/* ---- per-tab metrics ---- */
+
+.perf-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12px;
+  cursor: context-menu;
+}
+.perf-tab-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.perf-tab-metrics {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.perf-tab[data-hibernated="true"] { opacity: 0.5; }
+.perf-cap-badge {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* ---- ping ---- */
+
+.ping-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 12px; }
+.ping-row > :first-child { flex: 1; }
+.ping-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.ping-value[data-grade="excellent"] { color: var(--success); }
+.ping-value[data-grade="good"] { color: var(--success); opacity: 0.8; }
+.ping-value[data-grade="fair"] { color: var(--warning); }
+.ping-value[data-grade="poor"],
+.ping-value[data-grade="unreachable"] { color: var(--danger); }
+.ping-jitter { font-size: 10px; color: var(--text-tertiary); }
+
+/* ---- games and deals ---- */
+
+.game-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.game-card { display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.game-cover { width: 100%; aspect-ratio: 92/43; object-fit: cover; border-radius: var(--radius-sm); }
+.game-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-time { color: var(--text-tertiary); font-size: 10px; }
+
+.deal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  margin-bottom: 6px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 12px;
+}
+.deal-card:hover { background: var(--bg-hover); }
+.deal-price { font-weight: 600; }
+.deal-price s { color: var(--text-tertiary); font-weight: 400; margin-right: 4px; }
+.deal-store { font-size: 10px; color: var(--success); }
+
+.feed-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--divider);
+  text-decoration: none;
+  color: inherit;
+  font-size: 12px;
+}
+.feed-meta { font-size: 10px; color: var(--text-tertiary); }
+
+/* ---- creator ---- */
+
+.asset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.asset { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.asset img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius-sm); }
+.asset figcaption { display: flex; justify-content: space-between; gap: 4px; font-size: 10px; }
+.asset-licence { color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.03em; }
+
+.swatch-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.swatch {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.thumb-layout { margin-bottom: 12px; }
+.thumb-layout-name { font-size: 10px; color: var(--text-tertiary); }
+.thumb-pair { display: flex; gap: 8px; margin-top: 4px; }
+.thumb-slot {
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  overflow: hidden;
+}
+.thumb-slot img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---- student ---- */
+
+.timer { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.timer-clock {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.timer-clock[data-phase="break"] { color: var(--success); }
+.timer-phase { font-size: 11px; color: var(--text-tertiary); }
+
+.citation {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--divider);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.citation-text { margin: 0 0 4px; }
+.citation-text em { font-style: italic; }
+.citation-actions { display: flex; gap: 10px; }
+/* A citation scraped from a bare <title> is flagged: a student should be able
+   to see which ones need checking before they submit. */
+.citation[data-confidence="low"] { border-left: 2px solid var(--warning); padding-left: 8px; }
+
+.deadline-group { margin-bottom: 10px; }
+.deadline-group h4 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
+.deadline-group[data-urgency="overdue"] h4 { color: var(--danger); }
+.deadline-group[data-urgency="today"] h4 { color: var(--warning); }
+.deadline { display: flex; flex-direction: column; padding: 4px 0; font-size: 12px; }
+.deadline-meta { font-size: 10px; color: var(--text-tertiary); }
+
+/* ---- ghost ---- */
+
+.ghost-row { display: flex; flex-direction: column; gap: 8px; }

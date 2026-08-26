@@ -219,6 +219,30 @@ class SyncService extends EventEmitter {
     this._timer = null;
   }
 
+  /**
+   * Suspend scheduled syncing without disabling sync.
+   *
+   * Used by Turbo (spec §4). Distinct from `disable()`, which is a user
+   * decision that clears credentials: pausing must leave everything intact so
+   * `resume()` picks up where it left off, and must not touch
+   * `settings.sync.enabled` — a crash during Turbo would otherwise look to
+   * the user like sync silently turned itself off.
+   */
+  pause() {
+    if (this._paused) return this.status();
+    this._paused = true;
+    this.stop();
+    this._setState({ status: 'paused' });
+    return this.status();
+  }
+
+  resume() {
+    if (!this._paused) return this.status();
+    this._paused = false;
+    this.start().catch(() => {});
+    return this.status();
+  }
+
   // ---- the sync cycle --------------------------------------------------
 
   async syncNow() {

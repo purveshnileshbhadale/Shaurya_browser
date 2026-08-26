@@ -442,6 +442,119 @@ app.whenReady().then(async () => {
   });
 
   // =======================================================================
+  // Modes (spec §2) — the centrepiece
+  // =======================================================================
+
+  await check('every built-in mode activates and reconfigures the chrome', () => {
+    const { modes } = container;
+    const ids = modes.list().filter((m) => m.builtin).map((m) => m.id);
+    assert(ids.length === 6, `expected 6 built-in modes, got ${ids.length}`);
+
+    const seen = [];
+    for (const id of ids) {
+      const snapshot = modes.activate(id);
+      assert(snapshot.activeId === id, `${id} did not become active`);
+      assert(snapshot.panels.length > 0, `${id} surfaced no panels`);
+      assert(snapshot.appearance.theme, `${id} resolved no theme`);
+      seen.push(`${id}:${snapshot.panels.length}`);
+    }
+    modes.activate('default');
+    return seen.join(' ');
+  });
+
+  await check('switching modes does not disturb open tabs', async () => {
+    const { modes } = container;
+    // Three tabs, one of them active and mid-history, so a mode switch has
+    // something real to lose if it were touching the tab set at all.
+    const a = win.tabs.create({ url: 'aether://start', background: true });
+    const b = win.tabs.create({ url: 'aether://settings', background: true });
+    await wait(300);
+
+    const before = win.tabs.list().map((t) => t.id).join(',');
+    const activeBefore = win.tabs.activeId;
+
+    modes.activate('gamer');
+    modes.activate('programmer');
+    modes.activate('ghost');
+    modes.activate('default');
+
+    const after = win.tabs.list().map((t) => t.id).join(',');
+    assert(before === after, `tab set changed: ${before} -> ${after}`);
+    assert(win.tabs.activeId === activeBefore, 'the active tab moved');
+
+    win.tabs.close(a.id);
+    win.tabs.close(b.id);
+    return `${before.split(',').length} tabs survived 4 switches`;
+  });
+
+  await check('a mode overlays features without writing preferences', () => {
+    const { modes, features, settings } = container;
+    const stored = JSON.parse(JSON.stringify(settings.get('features')));
+
+    modes.activate('gamer');
+    assert(features.enabled('turbo'), 'Gamer Mode did not switch Turbo on');
+    assert(!features.base('turbo'), 'Gamer Mode wrote the stored preference');
+
+    modes.activate('programmer');
+    assert(features.enabled('httpClient'), 'Programmer Mode did not switch the REST client on');
+    assert(!features.enabled('turbo'), 'Turbo leaked out of Gamer Mode');
+
+    modes.activate('default');
+    assert(JSON.stringify(settings.get('features')) === JSON.stringify(stored),
+      'the stored preference map moved during mode switching');
+    return 'overlay only, preferences untouched';
+  });
+
+  await check('Ghost Mode switches off everything that keeps a record', () => {
+    const { modes, features } = container;
+    features.toggle('history', true);
+
+    modes.activate('ghost');
+    assert(!features.enabled('history'), 'Ghost Mode still records history');
+    assert(!features.enabled('sync'), 'Ghost Mode still syncs');
+    assert(features.enabled('fingerprintRandom'), 'Ghost Mode is not randomising');
+
+    modes.activate('default');
+    assert(features.enabled('history'), 'history did not come back after Ghost Mode');
+    return 'history and sync off, randomisation on';
+  });
+
+  await check('a custom mode mixes features from two built-ins', () => {
+    const { modes, features } = container;
+    const doc = modes.create({
+      name: 'Smoke Mix',
+      basedOn: 'programmer',
+      features: { recorder: true, streamPlayer: true },
+    });
+
+    modes.activate(doc.id);
+    assert(features.enabled('httpClient'), 'the seed mode\'s features did not carry over');
+    assert(features.enabled('recorder'), 'the mixed-in feature is not on');
+
+    modes.activate('default');
+    modes.remove(doc.id);
+    assert(!modes.byId(doc.id), 'the custom mode was not removed');
+    return 'programmer + gamer features in one mode';
+  });
+
+  await check('the mode switcher renders in the chrome', async () => {
+    const found = await win.shellView.webContents.executeJavaScript(`
+      (() => {
+        const el = document.querySelector('.mode-switch');
+        if (!el) return null;
+        return {
+          label: el.querySelector('.mode-label')?.textContent,
+          mode: el.dataset.mode,
+          panelButtons: document.querySelectorAll('.panel-buttons button').length,
+        };
+      })()
+    `);
+    assert(found, 'the Mode Switcher control is not in the DOM');
+    assert(found.panelButtons > 0, 'the mode surfaced no panel buttons');
+    return `${found.label} · ${found.panelButtons} panel button(s)`;
+  });
+
+  // =======================================================================
   // Feature store teardown
   // =======================================================================
 
@@ -478,6 +591,22 @@ app.whenReady().then(async () => {
     const file = await capture(win, 'main-window');
     assert(fs.statSync(file).size > 5000, 'screenshot looks empty');
     return path.basename(file);
+  });
+
+  await check('captures each mode\'s chrome', async () => {
+    const shot = [];
+    for (const id of ['programmer', 'gamer', 'creator', 'student', 'ghost']) {
+      container.modes.activate(id);
+      // Let the renderer receive modes:changed and repaint before capturing;
+      // a screenshot taken mid-transition proves nothing about either state.
+      await wait(650);
+      const file = await capture(win, `mode-${id}`);
+      assert(fs.statSync(file).size > 5000, `${id} screenshot looks empty`);
+      shot.push(id);
+    }
+    container.modes.activate('default');
+    await wait(400);
+    return shot.join(', ');
   });
 
   // =======================================================================

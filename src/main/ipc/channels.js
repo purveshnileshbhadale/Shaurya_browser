@@ -61,8 +61,49 @@ const INVOKE = [
   'stream.open', 'stream.close', 'stream.list', 'stream.add', 'stream.remove',
   'games.library', 'games.presence', 'games.feeds', 'games.addFeed',
   'games.removeFeed', 'games.refresh',
-  'deals.list', 'deals.watch', 'deals.unwatch', 'deals.refresh',
-  'gamepad.state',
+  'deals.list', 'deals.watch', 'deals.unwatch', 'deals.refresh', 'deals.search',
+  'ping.regions', 'ping.test', 'ping.watch', 'ping.stopWatch', 'ping.addRegion',
+  'ping.removeRegion',
+  'overlay.state', 'overlay.toggle', 'overlay.update',
+  'gamepad.state', 'gamepad.bind', 'gamepad.reset',
+  'gallery.list', 'gallery.remove', 'gallery.reveal',
+
+  // --- programmer depth (spec §3) --------------------------------------
+  'terminal.open', 'terminal.write', 'terminal.signal', 'terminal.close',
+  'terminal.list', 'terminal.scrollback',
+  'db.drivers', 'db.connect', 'db.query', 'db.schema', 'db.close', 'db.list',
+  'graphql.state', 'graphql.addEndpoint', 'graphql.removeEndpoint',
+  'graphql.introspect', 'graphql.execute', 'graphql.clearHistory',
+  'docker.available', 'docker.containers', 'docker.logs',
+  'snippets.list', 'snippets.save', 'snippets.remove', 'snippets.resolve',
+  'mocks.list', 'mocks.save', 'mocks.remove', 'mocks.toggle',
+  'depwatch.analyse',
+
+  // --- creator (spec §5) ------------------------------------------------
+  'creator.state', 'creator.search', 'creator.sources',
+  'creator.saveKit', 'creator.removeKit', 'creator.applyValue',
+  'creator.thumbnails', 'creator.setThumbnail',
+  'creator.scripts', 'creator.saveScript', 'creator.removeScript',
+  'creator.schedule', 'creator.unschedule', 'creator.analytics',
+  'creator.focusCanvas', 'creator.setFocusCanvas',
+
+  // --- student (spec §6) ------------------------------------------------
+  'student.library', 'student.capture', 'student.updateSource',
+  'student.removeSource', 'student.cite', 'student.exportBibliography',
+  'student.timer', 'student.startTimer', 'student.stopTimer',
+  'student.blockList', 'student.setBlockList', 'student.setSiteLimit',
+  'student.decks', 'student.generateDeck', 'student.removeDeck',
+  'student.reviewCard',
+  'student.annotations', 'student.addAnnotation', 'student.removeAnnotation',
+  'student.searchNotes', 'student.storeOcr', 'student.ocrStatus',
+  'student.deadlines', 'student.importFeed', 'student.removeFeed',
+  'student.room', 'student.setRoom',
+
+  // --- ghost (spec §7) --------------------------------------------------
+  'ghost.status', 'ghost.torAvailable', 'ghost.routeTor', 'ghost.verifyTor',
+  'ghost.dohProviders', 'ghost.setDoh',
+  'ghost.stripFile', 'ghost.shredFile', 'ghost.shredderCaveat',
+  'ghost.breachReport', 'ghost.runBreachScan', 'ghost.panic',
 
   // --- profiles ---------------------------------------------------------
   'profiles.list', 'profiles.create', 'profiles.remove', 'profiles.switch',
@@ -146,6 +187,8 @@ const EVENTS = [
   'perf:metrics', 'perf:tabUsage', 'perf:turbo',
   'recorder:state', 'recorder:clip',
   'stream:changed', 'games:changed', 'deals:changed',
+  'creator:changed', 'student:changed', 'student:timer', 'ghost:changed',
+  'devtools:changed', 'terminal:data',
   'adblock:count', 'adblock:lists',
   'permissions:prompt', 'permissions:changed',
   'vpn:status', 'vault:status', 'downloads:changed',

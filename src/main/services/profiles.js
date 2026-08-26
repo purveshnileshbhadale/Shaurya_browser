@@ -56,6 +56,11 @@ class ProfileService extends EventEmitter {
     }));
   }
 
+  /** The profile currently in use. */
+  active() {
+    return this.get(this.activeId);
+  }
+
   get(id) {
     return this.store.data.profiles.find((p) => p.id === id) || null;
   }

@@ -41,6 +41,23 @@ const { JsonViewerService } = require('./services/devtools/json-viewer');
 const { ColorService } = require('./services/devtools/color');
 const { ResponsiveService } = require('./services/devtools/responsive');
 const { ToolsService } = require('./services/devtools/tools');
+const { TerminalService } = require('./services/devtools/terminal');
+const { DatabaseService } = require('./services/devtools/db');
+const { GraphQLService } = require('./services/devtools/graphql');
+const { DockerService } = require('./services/devtools/docker');
+const { SnippetService } = require('./services/devtools/snippets');
+const { MockingService } = require('./services/devtools/mocking');
+const { DepWatchService } = require('./services/devtools/depwatch');
+const { PerformanceService } = require('./services/gaming/performance');
+const { RecorderService } = require('./services/gaming/recorder');
+const { StreamService } = require('./services/gaming/streams');
+const { GameFeedsService } = require('./services/gaming/feeds');
+const { DealsService } = require('./services/gaming/deals');
+const { PingService } = require('./services/gaming/ping');
+const { OverlayService, GalleryService } = require('./services/gaming/overlay');
+const { CreatorService } = require('./services/creator');
+const { StudentService } = require('./services/student');
+const { GhostService } = require('./services/ghost');
 const { SyncService } = require('./services/sync/engine');
 const { ContentBridge } = require('./services/content-bridge');
 const { WindowManager } = require('./window/window-manager');
@@ -103,6 +120,45 @@ async function bootstrap() {
   container.responsive = new ResponsiveService(container.settings, container.features);
   container.tools = new ToolsService();
 
+  // ---- programmer depth (spec §3) --------------------------------------
+  container.terminal = new TerminalService(container);
+  container.db = new DatabaseService(container);
+  container.graphql = new GraphQLService({ http: container.http, features: container.features });
+  container.docker = new DockerService(container);
+  container.snippets = new SnippetService(container);
+  container.mocking = new MockingService(container);
+  container.depwatch = new DepWatchService(container);
+
+  // ---- gaming (spec §4) ------------------------------------------------
+  container.performance = new PerformanceService(container);
+  container.recorder = new RecorderService(container);
+  container.streams = new StreamService(container);
+  container.gameFeeds = new GameFeedsService(container);
+  container.deals = new DealsService(container);
+  container.ping = new PingService(container);
+  container.overlay = new OverlayService({
+    settings: container.settings,
+    features: container.features,
+    performance: container.performance,
+  });
+  container.gallery = new GalleryService(container);
+
+  // ---- creator, student, ghost (spec §5-§7) ----------------------------
+  container.creator = new CreatorService(container);
+  container.student = new StudentService({
+    settings: container.settings,
+    features: container.features,
+    ai: container.ai,
+    content: container.content,
+  });
+  container.ghost = new GhostService({
+    settings: container.settings,
+    features: container.features,
+    modes: container.modes,
+    vault: container.vault,
+    breach: require('./services/passwords/breach'),
+  });
+
   container.sync = new SyncService(container.settings, container.features, {
     bookmarks: container.bookmarks,
     history: container.history,
@@ -134,6 +190,8 @@ async function bootstrap() {
     container.privacy.attach(sess, profile);
     container.permissions.attach(sess, profile);
     container.cors.attach(sess, profile);
+    container.mocking.attach(sess, profile);
+    container.student.attach(sess);
     container.vpn.attach(sess, profile);
     container.downloads.attach(sess, profile);
     container.jsonViewer.attach(sess, profile);
@@ -167,14 +225,25 @@ async function bootstrap() {
   }
 
   wireCrossServiceEvents(container);
+  startModeWork(container);
 
   // ---- modes -----------------------------------------------------------
   // A mode switch is a chrome-level event: it changes what the toolbar
   // offers and how the window looks, and never touches the tab set. That is
   // why "no restart, no lost tabs" needs no special handling here — there is
   // simply nothing in this path that could lose one.
+  // Services that own OS-level resources need the window manager, which is
+  // constructed after them to keep the dependency graph acyclic.
+  container.performance.attach(container.windowManager);
+  container.ghost.attach(container.windowManager);
+  container.ghost.applyStoredDoh();
+
   container.modes.on('changed', (snapshot) => {
     applyTheme(container);
+    // Arm or release the mode's background work. Doing this from the mode
+    // event rather than from each service means a new mode gets correct
+    // lifecycle behaviour without touching any of them.
+    startModeWork(container);
     container.windowManager.broadcast('modes:changed', snapshot);
     // Feature visibility moved, so the Feature Store screen must repaint too.
     container.windowManager.broadcast('features:changed', {
@@ -222,6 +291,34 @@ function resolvePageUrl(container, webContentsId) {
 }
 
 /**
+ * Start (or stop) the background work each feature implies.
+ *
+ * Called at boot and on every mode change. Every branch is `enabled()`-gated
+ * rather than mode-gated, so a user who turns one of these on inside a
+ * custom mode gets the same behaviour as the built-in that ships it — which
+ * is the whole point of the Feature Store being the source of truth.
+ */
+function startModeWork(container) {
+  const on = (id) => container.features.enabled(id);
+
+  if (on('hardwareOverlay') || on('tabLimits')) container.performance.start();
+  else container.performance.stop();
+
+  if (on('gameFeeds')) container.gameFeeds.start(); else container.gameFeeds.dispose();
+  if (on('deals')) container.deals.start(); else container.deals.dispose();
+  if (on('docker')) container.docker.start(); else container.docker.stop();
+  if (on('breachMonitor')) container.ghost.startMonitor(); else container.ghost.stopMonitor();
+
+  // Closing a stream player or overlay when its feature goes off matters:
+  // an always-on-top window that outlives the mode that opened it is very
+  // hard for a user to explain, and slightly hard to get rid of.
+  if (!on('streamPlayer')) container.streams.close();
+  if (!on('hardwareOverlay')) container.overlay.hide();
+  if (!on('recorder')) container.recorder.dispose();
+  if (!on('terminal')) container.terminal.disposeAll();
+}
+
+/**
  * The native theme follows the *resolved* appearance, so a mode that asks for
  * a dark chrome also darkens native surfaces (menus, scrollbars, the title
  * bar overlay) rather than leaving a light frame around a dark window.
@@ -241,6 +338,73 @@ function applyTheme(container) {
 function wireCrossServiceEvents(container) {
   const { windowManager, adblock, history, features, vpn, vault, sync, notes,
     downloads, extensions, permissions, ws, localServers, ai } = container;
+
+  // --- mode-scoped services -------------------------------------------
+  const { performance, recorder, streams, gameFeeds, deals, ping, overlay,
+    creator, student, ghost, docker, mocking, snippets, graphql, terminal } = container;
+
+  performance.on('metrics', (m) => windowManager.broadcast('perf:metrics', m));
+  performance.on('tabUsage', (rows) => windowManager.broadcast('perf:tabUsage', rows));
+  performance.on('turbo', (s) => windowManager.broadcast('perf:turbo', s));
+  performance.on('capEnforced', (info) => windowManager.broadcast('toast', {
+    tone: 'warn',
+    message: `A tab was put to sleep for exceeding its ${info.reason} cap.`,
+  }));
+
+  recorder.on('state', (s) => windowManager.broadcast('recorder:state', s));
+  recorder.on('clip', (file) => {
+    windowManager.broadcast('recorder:clip', file);
+    // File the clip under the game it came from, so the gallery is organised
+    // without the user doing anything.
+    container.gallery.file(file.path, windowManager.focused()?.title).catch(() => {});
+  });
+  recorder.on('saved', (file) => windowManager.broadcast('recorder:clip', file));
+
+  streams.on('changed', (s) => windowManager.broadcast('stream:changed', s));
+  gameFeeds.on('changed', (s) => windowManager.broadcast('games:changed', s));
+  gameFeeds.on('presence', (p) => windowManager.broadcast('games:changed', { presence: p }));
+  deals.on('changed', (s) => windowManager.broadcast('deals:changed', s));
+  deals.on('hits', (hits) => {
+    for (const hit of hits) {
+      windowManager.broadcast('toast', {
+        tone: 'success',
+        message: hit.reason === 'target'
+          ? `${hit.title} hit your target price: $${hit.price} at ${hit.store}.`
+          : `${hit.title} dropped to $${hit.price} at ${hit.store}.`,
+      });
+    }
+  });
+  ping.on('sample', (s) => windowManager.broadcast('perf:metrics', { ping: s }));
+  overlay.on('changed', (s) => windowManager.broadcast('perf:turbo', { overlay: s }));
+
+  creator.on('changed', (s) => windowManager.broadcast('creator:changed', s));
+  creator.on('scripts', (s) => windowManager.broadcast('creator:changed', { scripts: s }));
+  creator.on('focusCanvas', (s) => windowManager.broadcast('creator:changed', { focusCanvas: s }));
+
+  student.on('timer', (s) => windowManager.broadcast('student:timer', s));
+  student.on('phase', ({ phase }) => windowManager.broadcast('toast', {
+    tone: 'info',
+    message: phase === 'focus' ? 'Back to it — focus block started.' : 'Break time.',
+  }));
+  student.on('changed', (s) => windowManager.broadcast('student:changed', s));
+  student.on('decks', (d) => windowManager.broadcast('student:changed', { decks: d }));
+  student.on('deadlines', (d) => windowManager.broadcast('student:changed', { deadlines: d }));
+
+  ghost.on('changed', (s) => windowManager.broadcast('ghost:changed', s));
+  ghost.on('breach', (r) => windowManager.broadcast('ghost:changed', { breach: r }));
+  ghost.on('stripped', (info) => windowManager.broadcast('toast', {
+    tone: 'success',
+    message: `Removed ${info.removed.length} metadata block(s) from the download.`,
+  }));
+
+  docker.on('changed', (s) => windowManager.broadcast('devtools:changed', { docker: s }));
+  mocking.on('changed', (rules) => windowManager.broadcast('devtools:changed', { mocks: rules }));
+  snippets.on('changed', (s) => windowManager.broadcast('devtools:changed', { snippets: s }));
+  graphql.on('changed', (s) => windowManager.broadcast('devtools:changed', { graphql: s }));
+  terminal.on('data', (chunk) => windowManager.broadcast('terminal:data', chunk));
+  terminal.on('exit', (info) => windowManager.broadcast('terminal:data', {
+    ...info, stream: 'system', text: `\n[process exited with code ${info.code}]\n`,
+  }));
 
   // Blocked-count badge.
   adblock.on('count', (stats) => windowManager.broadcast('adblock:count', stats));

@@ -57,6 +57,28 @@ const DEFAULTS = [
   { id: 'zoom.reset', label: 'Reset zoom', group: 'Interface', accelerator: 'CmdOrCtrl+0' },
 
   // --- panels ---
+  // --- modes (spec §2) --------------------------------------------------
+  { id: 'mode.switch', label: 'Open the Mode Switcher', group: 'Modes', accelerator: 'CmdOrCtrl+M' },
+  { id: 'mode.next', label: 'Next mode', group: 'Modes', accelerator: 'CmdOrCtrl+Alt+M' },
+  { id: 'mode.previous', label: 'Previous mode', group: 'Modes', accelerator: 'CmdOrCtrl+Alt+Shift+M' },
+  { id: 'mode.default', label: 'Switch to Default', group: 'Modes', accelerator: '' },
+  { id: 'mode.programmer', label: 'Switch to Programmer', group: 'Modes', accelerator: '' },
+  { id: 'mode.gamer', label: 'Switch to Gamer', group: 'Modes', accelerator: '' },
+  { id: 'mode.creator', label: 'Switch to Creator', group: 'Modes', accelerator: '' },
+  { id: 'mode.student', label: 'Switch to Student', group: 'Modes', accelerator: '' },
+  { id: 'mode.ghost', label: 'Switch to Ghost', group: 'Modes', accelerator: '' },
+
+  // --- mode features ----------------------------------------------------
+  { id: 'turbo.toggle', label: 'Toggle Turbo', group: 'Gaming', accelerator: 'CmdOrCtrl+Alt+T' },
+  { id: 'recorder.clip', label: 'Save the last N seconds', group: 'Gaming', accelerator: 'CmdOrCtrl+Alt+C' },
+  { id: 'overlay.toggle', label: 'Hardware overlay', group: 'Gaming', accelerator: 'CmdOrCtrl+Alt+O' },
+  { id: 'student.cite', label: 'Cite this page', group: 'Student', accelerator: 'CmdOrCtrl+Alt+K' },
+  { id: 'student.timer', label: 'Start or stop the focus timer', group: 'Student', accelerator: 'CmdOrCtrl+Alt+P' },
+  { id: 'creator.focusCanvas', label: 'Focus canvas', group: 'Creator', accelerator: 'CmdOrCtrl+Alt+F' },
+  // Deliberately a chord nobody hits by accident: this closes windows and
+  // wipes state, and a single key would be a footgun on a shared machine.
+  { id: 'ghost.panic', label: 'Panic — close and wipe', group: 'Ghost', accelerator: 'CmdOrCtrl+Alt+Shift+Backspace' },
+
   { id: 'panel.ai', label: 'AI assistant', group: 'Panels', accelerator: 'CmdOrCtrl+Shift+A' },
   { id: 'panel.notes', label: 'Notes', group: 'Panels', accelerator: 'CmdOrCtrl+Shift+M' },
   { id: 'panel.http', label: 'REST client', group: 'Panels', accelerator: 'CmdOrCtrl+Shift+E' },

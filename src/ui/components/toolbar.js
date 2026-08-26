@@ -9,6 +9,17 @@
  */
 import { h, icon, clear, displayHost } from '../core/dom.js';
 import { state, subscribe, invoke, selectors, toast } from '../core/store.js';
+import { MODE_PANELS } from './mode-panels.js';
+
+/**
+ * The three panels every mode has access to, described here so the toolbar
+ * can label them the same way it labels mode panels.
+ */
+const BASELINE_PANEL_META = {
+  ai: { label: 'AI assistant', icon: 'sparkle' },
+  notes: { label: 'Notes', icon: 'note' },
+  dev: { label: 'Developer', icon: 'code' },
+};
 
 export function createToolbar({ container }) {
   let inputEl = null;
@@ -70,13 +81,42 @@ export function createToolbar({ container }) {
 
   suggestionsEl = h('div.omnibox-suggestions', { style: { display: 'none' } });
 
+  // Which panel buttons appear is the active mode's decision (spec §1). This
+  // slot is re-rendered on every mode change; the buttons after it are
+  // baseline browser controls and never move.
+  const panelButtons = h('div.panel-buttons', {
+    style: { display: 'flex', gap: '2px', flex: 'none' },
+  });
+
   const rightGroup = h('div', { style: { display: 'flex', gap: '2px', flex: 'none' } },
-    toolbarButton('sparkle', 'AI assistant', () => togglePanel('ai')),
-    toolbarButton('note', 'Notes', () => togglePanel('notes')),
-    toolbarButton('code', 'Developer', () => togglePanel('dev')),
+    panelButtons,
     toolbarButton('vpn', 'VPN', (e) => openPopover('vpn', e.currentTarget), 'vpn-button'),
     toolbarButton('download', 'Downloads', (e) => openPopover('downloads', e.currentTarget)),
     toolbarButton('more', 'Menu', (e) => openPopover('menu', e.currentTarget)));
+
+  renderPanelButtons();
+  subscribe('modes', renderPanelButtons);
+
+  /**
+   * Build one button per panel the active mode surfaces.
+   *
+   * Labels and icons come from the panel registry rather than being repeated
+   * here, so a panel is described in exactly one place.
+   */
+  function renderPanelButtons() {
+    clear(panelButtons);
+    const ids = state.modes?.panels?.length ? state.modes.panels : ['ai', 'notes', 'dev'];
+
+    for (const id of ids) {
+      const view = BASELINE_PANEL_META[id] || MODE_PANELS[id];
+      // A mode may name a panel this build does not have. Skipping keeps the
+      // rest of the toolbar working.
+      if (!view) continue;
+      panelButtons.appendChild(
+        toolbarButton(view.icon, view.label, () => togglePanel(id)),
+      );
+    }
+  }
 
   const windowControls = h('div.window-controls', {},
     h('button.icon-btn', { title: 'Minimise', onclick: () => invoke('window.minimize', {}) },

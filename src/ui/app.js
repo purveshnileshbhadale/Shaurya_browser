@@ -14,6 +14,7 @@ import {
 import { createTabStrip } from './components/tabstrip.js';
 import { createToolbar } from './components/toolbar.js';
 import { createPanel } from './components/panels.js';
+import { createModeSwitcher, createQuickActions } from './components/mode-switcher.js';
 import { prettyAccelerator } from './components/palette.js';
 
 const shell = $('#shell');
@@ -25,6 +26,7 @@ const panelEl = $('#panel');
 let toolbar = null;
 let panel = null;
 let findBar = null;
+let modeSwitcher = null;
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -41,6 +43,10 @@ let findBar = null;
     createTabStrip({ container: tabstripEl, orientation: 'horizontal' });
     toolbar = createToolbar({ container: toolbarEl });
     panel = createPanel({ container: panelEl });
+    // Panels are reachable from the mode switcher's quick actions and from
+    // aether:// pages, so the instance is published rather than passed
+    // through four layers of arguments.
+    window.aetherPanels = panel;
 
     wireShellChrome();
     wireKeyboard();
@@ -76,6 +82,18 @@ function wireShellChrome() {
       title: 'New tab',
       onclick: () => invoke('tabs.create', {}),
     }, icon('plus')));
+
+  // The Mode Switcher sits on its own row under the workspace picker: it
+  // answers "what is this window for", which is a different question from
+  // "which tab am I on", and interleaving them makes both harder to find.
+  const modeBar = h('div#mode-bar');
+  head.after(modeBar);
+  // Switcher first so it anchors the row; the actions follow to its right and
+  // change with the mode, since the mode document decides which appear.
+  modeSwitcher = createModeSwitcher({ container: modeBar });
+  const quickActions = h('div.quick-actions');
+  modeBar.appendChild(quickActions);
+  createQuickActions({ container: quickActions });
 
   // --- sidebar footer ---
   $('#sidebar-foot').append(
@@ -360,6 +378,40 @@ async function runCommand(id) {
     case 'zoom.in': return zoom(0.5);
     case 'zoom.out': return zoom(-0.5);
     case 'zoom.reset': return invoke('tabs.zoom', { id: tab?.id, level: 0 });
+
+    // --- modes (spec §2) ---
+    case 'mode.switch': return modeSwitcher.open();
+    case 'mode.next': return modeSwitcher.cycle(1);
+    case 'mode.previous': return modeSwitcher.cycle(-1);
+    case 'mode.default': case 'mode.programmer': case 'mode.gamer':
+    case 'mode.creator': case 'mode.student': case 'mode.ghost':
+      return modeSwitcher.activate(id.split('.')[1]);
+
+    // --- mode features ---
+    case 'turbo.toggle':
+      return invoke('perf.turbo', { on: !state.perf?.turbo?.on })
+        .then((s) => toast(s.on
+          ? `Turbo on — ${s.suspendedTabs} tab(s) suspended`
+          : 'Turbo off', 'success'));
+    case 'recorder.clip':
+      return invoke('recorder.clip', {})
+        .then((c) => toast(`Clipped the last ${c.seconds}s`, 'success'))
+        .catch((err) => toast(err.message, 'error'));
+    case 'overlay.toggle': return invoke('overlay.toggle', {});
+    case 'student.cite':
+      return invoke('student.capture', {})
+        .then((s) => toast(`Captured "${s.title}"`, 'success'))
+        .catch((err) => toast(err.message, 'error'));
+    case 'student.timer':
+      return state.student?.timer?.running
+        ? invoke('student.stopTimer', {})
+        : invoke('student.startTimer', {});
+    case 'creator.focusCanvas': {
+      const next = !state.creator?.focusCanvas?.active;
+      document.documentElement.dataset.focusCanvas = String(next);
+      return invoke('creator.setFocusCanvas', { active: next });
+    }
+    case 'ghost.panic': return invoke('ghost.panic', { scope: 'window' }).catch(() => {});
 
     // --- panels ---
     case 'panel.ai': return panel.open('ai');
