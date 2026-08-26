@@ -238,6 +238,13 @@ the preload and the router import it, and a channel not listed there cannot be
 invoked at all. `router.missing()` reports declared-but-unimplemented channels at
 boot — a wiring bug is much cheaper to see there than as a silent failure.
 
+That check earns its keep: while the mode services were being added, two
+commits declared the gaming channels before their handlers existed, and the
+smoke test failed on exactly that — 30 channels declared, none implemented.
+Unit tests passed on both, because nothing imports the channel list except
+the router. **Run `npm run smoke`, not just `npm test`, before pushing
+anything that touches `channels.js`.**
+
 **Fail open on filters, fail closed on permissions.** A blocker bug should
 degrade blocking, not break the web. An unknown permission should be denied.
 
