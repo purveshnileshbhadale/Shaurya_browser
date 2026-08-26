@@ -195,6 +195,21 @@ Push, or run the "Android APK" workflow manually
   → download the `aether-debug-apk` artifact  (~17 MB, debug-signed)
 ```
 
+The same build is also force-pushed to the **`claude/apk-dist`** branch, at
+`apk/aether-debug.apk`. Actions artifacts are served from a short-lived,
+authenticated blob host that a fair number of corporate and sandboxed networks
+deny outright, and when that happens the artifact is simply un-downloadable —
+the run page lists it and the click fails. The branch is the fallback, reachable
+by anything that can clone:
+
+```bash
+git fetch origin claude/apk-dist
+git show origin/claude/apk-dist:apk/aether-debug.apk > aether-debug.apk
+```
+
+It is rebuilt from an empty history every run, so it never holds more than the
+one APK it is currently publishing.
+
 Locally, with the SDK installed:
 
 ```bash
