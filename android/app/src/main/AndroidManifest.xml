@@ -5,6 +5,19 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!--
+        Background playback. Without a foreground service the system silences
+        a WebView within seconds of the app leaving the foreground, so this is
+        not an optimisation — it is the whole feature.
+
+        POST_NOTIFICATIONS is runtime-requested on Android 13+ and only when
+        playback actually starts: asking at launch, before there is anything
+        to notify about, is how apps get denied permanently.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".AetherApplication"
         android:allowBackup="false"
@@ -45,6 +58,31 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!--
+            Keeps audio and video playing when Aether is backgrounded or the
+            screen is off, and puts real transport controls on the lock screen.
+            Started only while something is playing and stopped the moment it
+            is not: a browser holding a foreground service the whole time it
+            is open would be killed for it on Android 12+, and rightly.
+        -->
+        <service
+            android:name=".media.PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!--
+            Routes hardware media keys and Bluetooth headset buttons into the
+            MediaSession. Without it the notification's own buttons work but
+            the ones on a user's headphones do not.
+        -->
+        <receiver
+            android:name="androidx.media.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <!-- Required on Android 11+ to detect other browsers for "open with". -->

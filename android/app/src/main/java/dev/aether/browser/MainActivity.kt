@@ -27,6 +27,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
+import dev.aether.browser.media.PlaybackService
 import dev.aether.browser.ui.AetherTheme
 import kotlinx.coroutines.launch
 
@@ -56,7 +57,110 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Background playback (spec: "add background play").
+     *
+     * WebView's own `onPause()` is what silences media when the app leaves
+     * the foreground — so the whole feature is: do not call it when something
+     * is playing, and hold a foreground service so the system lets the
+     * process live. Calling `pauseTimers()` here instead would stop the
+     * site's JavaScript, which stalls the player at the end of the track for
+     * the same reason background throttling does on desktop.
+     */
+    override fun onPause() {
+        super.onPause()
+        if (isPlayingMedia()) {
+            startPlaybackService()
+        } else {
+            // Nothing playing: pause everything, which is what saves battery
+            // for the overwhelmingly common case of a backgrounded browser.
+            webViews.values.forEach { it.onPause() }
+            webViews.values.firstOrNull()?.pauseTimers()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webViews.values.forEach { it.onResume() }
+        webViews.values.firstOrNull()?.resumeTimers()
+        // The notification exists to control playback while away. Back in the
+        // foreground the app itself is the control surface, so drop it rather
+        // than leaving a redundant notification in the shade.
+        if (!isPlayingMedia()) PlaybackService.stop(this)
+    }
+
+    /**
+     * Is any tab producing sound?
+     *
+     * There is no synchronous WebView API for this, so the state is what the
+     * injected media watcher last reported. A tab that has never reported is
+     * treated as silent — the conservative direction, since the cost of a
+     * false positive is a foreground service holding the process alive for
+     * nothing.
+     */
+    private fun isPlayingMedia(): Boolean = model.playingTabId.value != null
+
+    private fun startPlaybackService() {
+        val playingId = model.playingTabId.value ?: return
+        val tab = model.tabs.value.firstOrNull { it.id == playingId }
+
+        // Transport controls reach whichever WebView is actually playing.
+        PlaybackService.onPlay = { runOnUiThread { evaluateMedia(playingId, "play") } }
+        PlaybackService.onPause = { runOnUiThread { evaluateMedia(playingId, "pause") } }
+        PlaybackService.onNext = { runOnUiThread { evaluateMedia(playingId, "next") } }
+        PlaybackService.onPrevious = { runOnUiThread { evaluateMedia(playingId, "previous") } }
+
+        PlaybackService.update(
+            this,
+            title = model.playingTitle.value.ifBlank { tab?.title.orEmpty() },
+            artist = model.playingArtist.value,
+            playing = true
+        )
+    }
+
+    /** Drive the page's own player rather than poking the element blindly. */
+    private fun evaluateMedia(tabId: Long, action: String) {
+        val view = webViews[tabId] ?: return
+        val script = when (action) {
+            "play" -> "document.querySelector('audio,video')?.play()"
+            "pause" -> "document.querySelector('audio,video')?.pause()"
+            // Dispatch the key the site is listening for; a site with a queue
+            // needs its own next-track logic to run.
+            "next" -> "document.dispatchEvent(new KeyboardEvent('keydown',{key:'MediaTrackNext'}))"
+            "previous" -> "document.dispatchEvent(new KeyboardEvent('keydown',{key:'MediaTrackPrevious'}))"
+            else -> return
+        }
+        view.evaluateJavascript(script, null)
+    }
+
+    /**
+     * The page-to-app bridge for playback reports.
+     *
+     * Deliberately tiny. Everything it receives is untrusted page input, so
+     * strings are bounded before they reach a notification and the tab id is
+     * bound at construction rather than accepted as an argument.
+     */
+    private inner class MediaBridge(private val tabId: Long) {
+        @android.webkit.JavascriptInterface
+        fun report(playing: Boolean, title: String?, artist: String?) {
+            val safeTitle = (title ?: "").take(200)
+            val safeArtist = (artist ?: "").take(200)
+            runOnUiThread {
+                model.reportPlayback(tabId, playing, safeTitle, safeArtist)
+                // Keep the notification's metadata current while it is up.
+                if (playing && model.playingTabId.value == tabId) {
+                    PlaybackService.update(this@MainActivity, safeTitle, safeArtist, true)
+                }
+            }
+        }
+    }
+
     override fun onDestroy() {
+        PlaybackService.stop(this)
+        PlaybackService.onPlay = null
+        PlaybackService.onPause = null
+        PlaybackService.onNext = null
+        PlaybackService.onPrevious = null
         webViews.values.forEach { it.destroy() }
         webViews.clear()
         super.onDestroy()
@@ -311,8 +415,26 @@ class MainActivity : ComponentActivity() {
                 }
                 model.onNavigated(tabId, url, webView.title.orEmpty())
                 injectCosmeticFilters(webView, url)
+                injectMediaWatcher(webView)
+            }
+
+            override fun doUpdateVisitedHistory(webView: WebView, url: String, isReload: Boolean) {
+                super.doUpdateVisitedHistory(webView, url, isReload)
+                // A single-page app can swap the player out without a page
+                // load, so a stale session must not outlive the document it
+                // belonged to.
+                if (!isReload) model.clearPlayback(tabId)
             }
         }
+
+        // The media watcher's only way back into the app.
+        //
+        // A JavaScript interface is a real attack surface — every page gets
+        // it — so this one exposes exactly one method that takes three
+        // primitives and can only set a title on a notification. The tab id
+        // is captured here rather than passed by the page, so a page cannot
+        // report playback on another tab's behalf.
+        view.addJavascriptInterface(MediaBridge(tabId), "AetherMedia")
 
         view.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(webView: WebView, progress: Int) {
@@ -332,6 +454,57 @@ class MainActivity : ComponentActivity() {
      * need a DOM scan on every page, which costs more on a phone than the ads
      * did.
      */
+    /**
+     * Watch the page's media and report it back through the JS bridge.
+     *
+     * The desktop build does this from a preload script; WebView has no
+     * equivalent, so the watcher is injected after load. It reads
+     * `navigator.mediaSession.metadata` — the same source the desktop uses,
+     * and what a site declares for the system media hub — falling back to the
+     * element for the many sites that never set it.
+     *
+     * Silent, short, looping elements are ignored: a decorative background
+     * video is not a track, and treating one as such would hold a foreground
+     * service alive for a CSS effect.
+     */
+    private fun injectMediaWatcher(view: WebView) {
+        view.evaluateJavascript(
+            """
+            (function() {
+              if (window.__aetherMedia) return;
+              window.__aetherMedia = true;
+
+              var last = '';
+              function active() {
+                var all = [].slice.call(document.querySelectorAll('audio, video'))
+                  .filter(function(e) { return e.readyState > 0 && !e.ended; });
+                return all.filter(function(e) { return !e.paused && !e.muted; })[0]
+                    || all.filter(function(e) { return !e.paused; })[0]
+                    || null;
+              }
+              function report() {
+                var el = active();
+                var meta = navigator.mediaSession && navigator.mediaSession.metadata;
+                var decorative = el && el.muted && el.loop && (el.duration || 0) < 60;
+                var playing = !!(el && !el.paused && !decorative);
+                var title = (meta && meta.title) || document.title || '';
+                var artist = (meta && meta.artist) || '';
+                var sig = playing + '|' + title + '|' + artist;
+                if (sig === last) return;
+                last = sig;
+                if (window.AetherMedia) AetherMedia.report(playing, title, artist);
+              }
+              ['play','pause','ended','loadedmetadata','emptied'].forEach(function(t) {
+                document.addEventListener(t, report, true);
+              });
+              setInterval(report, 2000);
+              report();
+            })();
+            """.trimIndent(),
+            null
+        )
+    }
+
     private fun injectCosmeticFilters(view: WebView, url: String) {
         val host = dev.aether.browser.adblock.FilterEngine.hostOf(url.lowercase()) ?: return
         val css = model.blocker.engine.cosmeticCss(host)

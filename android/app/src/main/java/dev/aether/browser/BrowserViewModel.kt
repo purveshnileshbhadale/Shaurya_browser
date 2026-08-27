@@ -34,6 +34,45 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
     private val _assistant = MutableStateFlow(AssistantState())
     val assistant: StateFlow<AssistantState> = _assistant.asStateFlow()
 
+    // -- background playback ------------------------------------------------
+    // Reported by the media watcher injected into each page. Null means
+    // nothing is playing anywhere, which is what lets the activity decide
+    // whether backgrounding should pause the WebViews or hold a foreground
+    // service.
+
+    private val _playingTabId = MutableStateFlow<Long?>(null)
+    val playingTabId: StateFlow<Long?> = _playingTabId.asStateFlow()
+
+    private val _playingTitle = MutableStateFlow("")
+    val playingTitle: StateFlow<String> = _playingTitle.asStateFlow()
+
+    private val _playingArtist = MutableStateFlow("")
+    val playingArtist: StateFlow<String> = _playingArtist.asStateFlow()
+
+    /**
+     * A page announced its playback state.
+     *
+     * @param tabId  the tab that reported — never taken from the payload, so
+     *               one page cannot claim to be another
+     */
+    fun reportPlayback(tabId: Long, playing: Boolean, title: String, artist: String) {
+        if (playing) {
+            _playingTabId.value = tabId
+            _playingTitle.value = title
+            _playingArtist.value = artist
+        } else if (_playingTabId.value == tabId) {
+            // Only the tab that owns the session may end it. Otherwise a
+            // second tab pausing its silent background video would stop the
+            // music playing in the first.
+            _playingTabId.value = null
+            _playingTitle.value = ""
+            _playingArtist.value = ""
+        }
+    }
+
+    /** A tab closed or navigated away; drop any session it held. */
+    fun clearPlayback(tabId: Long) = reportPlayback(tabId, false, "", "")
+
     private var nextId = 1L
 
     val activeTab: Tab? get() = _tabs.value.firstOrNull { it.id == _activeTabId.value }
