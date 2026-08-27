@@ -71,6 +71,9 @@ class MainActivity : ComponentActivity() {
     /** Capture order, oldest first, so the cap evicts the least recent. */
     private val thumbnailOrder = ArrayDeque<Long>()
 
+    /** The theme's surface colour, for WebViews created after theming ran. */
+    private var webViewBacking: Int? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -97,9 +100,13 @@ class MainActivity : ComponentActivity() {
             AetherTheme(accent = model.store.settings.accent, themeMode = model.store.settings.theme) {
                 // Paint the WebView's own backing to match, or every
                 // navigation flashes white before the page paints — the most
-                // noticeable remaining seam in a dark theme.
+                // noticeable remaining seam in a dark theme. Remembered as
+                // well as applied, because a tab opened *after* this runs
+                // gets its WebView built in `configure`, which has no theme
+                // to read.
                 val backing = MaterialTheme.colorScheme.surface.toArgb()
                 LaunchedEffect(backing) {
+                    webViewBacking = backing
                     webViews.values.forEach { it.setBackgroundColor(backing) }
                 }
                 BrowserScreen()
@@ -314,99 +321,104 @@ class MainActivity : ComponentActivity() {
             if (!editingAddress) addressText = active?.url.orEmpty()
         }
 
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbar) },
-            bottomBar = {
-                BottomBar(
-                    text = addressText,
-                    editing = editingAddress,
-                    tab = active,
-                    tabCount = tabs.size,
-                    // From tab state, so the badge recomposes as the count changes.
-                    blockedCount = active?.blockedCount ?: 0,
-                    suggestions = if (editingAddress) model.suggestions(addressText) else emptyList(),
-                    nowPlaying = nowPlaying,
-                    onTextChange = { addressText = it },
-                    onEditingChange = { editingAddress = it },
-                    onGo = {
-                        val url = model.resolveInput(addressText)
-                        webViews[activeId]?.loadUrl(url)
-                        editingAddress = false
-                    },
-                    onBack = { webViews[activeId]?.goBack() },
-                    onForward = { webViews[activeId]?.goForward() },
-                    onReload = {
-                        if (active?.loading == true) webViews[activeId]?.stopLoading()
-                        else webViews[activeId]?.reload()
-                    },
-                    onTabs = {
-                        // Photograph the tab being left *before* the switcher
-                        // covers it: a WebView that is no longer composited
-                        // draws as a blank rectangle.
-                        captureThumbnail(activeId)
-                        showTabs = true
-                    },
-                    onMenu = { showMenu = true },
-                    onAssistant = { model.toggleAssistant() },
-                    onSuggestion = { url ->
-                        webViews[activeId]?.loadUrl(url)
-                        editingAddress = false
-                    },
-                    onPlayPause = { playingTabId?.let { evaluateMedia(it, "pause") } },
-                    onOpenPlaying = { playingTabId?.let { model.activateTab(it) } },
-                )
-            }
-        ) { padding ->
-            Box(Modifier.padding(padding).fillMaxSize()) {
-                if (active != null) {
-                    WebViewHost(tabId = active.id, initialUrl = active.url)
-                }
-                // Only while a page is actually fetching. A bar that appears
-                // at 0 and vanishes at 100 on every same-page anchor click is
-                // a flicker, not information.
-                AnimatedVisibility(
-                    visible = active?.loading == true && active.progress in 1..99,
-                    enter = fadeIn(tween(if (reducedMotion) 0 else 120)),
-                    exit = fadeOut(tween(if (reducedMotion) 0 else 220)),
-                    modifier = Modifier.align(Alignment.TopCenter),
-                ) {
-                    LinearProgressIndicator(
-                        progress = { (active?.progress ?: 0) / 100f },
-                        modifier = Modifier.fillMaxWidth(),
-                        drawStopIndicator = {},
+        // The switcher covers the browser rather than sitting beside it, so
+        // the stacking is stated here rather than left to whatever the root
+        // layout happens to do with two full-size siblings.
+        Box(Modifier.fillMaxSize()) {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbar) },
+                bottomBar = {
+                    BottomBar(
+                        text = addressText,
+                        editing = editingAddress,
+                        tab = active,
+                        tabCount = tabs.size,
+                        // From tab state, so the badge recomposes as the count changes.
+                        blockedCount = active?.blockedCount ?: 0,
+                        suggestions = if (editingAddress) model.suggestions(addressText) else emptyList(),
+                        nowPlaying = nowPlaying,
+                        onTextChange = { addressText = it },
+                        onEditingChange = { editingAddress = it },
+                        onGo = {
+                            val url = model.resolveInput(addressText)
+                            webViews[activeId]?.loadUrl(url)
+                            editingAddress = false
+                        },
+                        onBack = { webViews[activeId]?.goBack() },
+                        onForward = { webViews[activeId]?.goForward() },
+                        onReload = {
+                            if (active?.loading == true) webViews[activeId]?.stopLoading()
+                            else webViews[activeId]?.reload()
+                        },
+                        onTabs = {
+                            // Photograph the tab being left *before* the switcher
+                            // covers it: a WebView that is no longer composited
+                            // draws as a blank rectangle.
+                            captureThumbnail(activeId)
+                            showTabs = true
+                        },
+                        onMenu = { showMenu = true },
+                        onAssistant = { model.toggleAssistant() },
+                        onSuggestion = { url ->
+                            webViews[activeId]?.loadUrl(url)
+                            editingAddress = false
+                        },
+                        onPlayPause = { playingTabId?.let { evaluateMedia(it, "pause") } },
+                        onOpenPlaying = { playingTabId?.let { model.activateTab(it) } },
                     )
                 }
+            ) { padding ->
+                Box(Modifier.padding(padding).fillMaxSize()) {
+                    if (active != null) {
+                        WebViewHost(tabId = active.id, initialUrl = active.url)
+                    }
+                    // Only while a page is actually fetching. A bar that appears
+                    // at 0 and vanishes at 100 on every same-page anchor click is
+                    // a flicker, not information.
+                    AnimatedVisibility(
+                        visible = active?.loading == true && active.progress in 1..99,
+                        enter = fadeIn(tween(if (reducedMotion) 0 else 120)),
+                        exit = fadeOut(tween(if (reducedMotion) 0 else 220)),
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    ) {
+                        LinearProgressIndicator(
+                            progress = { (active?.progress ?: 0) / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                            drawStopIndicator = {},
+                        )
+                    }
+                }
             }
-        }
 
-        if (showTabs) {
-            TabGrid(
-                tabs = tabs,
-                activeId = activeId,
-                thumbnails = thumbnails,
-                onSelect = { model.activateTab(it); showTabs = false },
-                onClose = { id ->
-                    thumbnails.remove(id)
-                    webViews.remove(id)?.destroy()
-                    model.closeTab(id)
-                },
-                onNew = { incognito ->
-                    model.newTab(incognito = incognito)
-                    showTabs = false
-                },
-                onCloseAll = {
-                    // Tear the views down explicitly. `closeTab` only knows
-                    // about the model; a WebView left in the map would keep
-                    // its renderer process alive with nothing pointing at it.
-                    tabs.map { it.id }.forEach { id ->
+            if (showTabs) {
+                TabGrid(
+                    tabs = tabs,
+                    activeId = activeId,
+                    thumbnails = thumbnails,
+                    onSelect = { model.activateTab(it); showTabs = false },
+                    onClose = { id ->
                         thumbnails.remove(id)
                         webViews.remove(id)?.destroy()
                         model.closeTab(id)
-                    }
-                    showTabs = false
-                },
-                onDismiss = { showTabs = false },
-            )
+                    },
+                    onNew = { incognito ->
+                        model.newTab(incognito = incognito)
+                        showTabs = false
+                    },
+                    onCloseAll = {
+                        // Tear the views down explicitly. `closeTab` only knows
+                        // about the model; a WebView left in the map would keep
+                        // its renderer process alive with nothing pointing at it.
+                        tabs.map { it.id }.forEach { id ->
+                            thumbnails.remove(id)
+                            webViews.remove(id)?.destroy()
+                            model.closeTab(id)
+                        }
+                        showTabs = false
+                    },
+                    onDismiss = { showTabs = false },
+                )
+            }
         }
 
         if (showMenu) {
@@ -515,6 +527,8 @@ class MainActivity : ComponentActivity() {
     private fun configure(view: WebView, tabId: Long) {
         val tab = model.tabs.value.firstOrNull { it.id == tabId }
         val incognito = tab?.incognito == true
+
+        webViewBacking?.let { view.setBackgroundColor(it) }
 
         view.settings.apply {
             javaScriptEnabled = true
