@@ -66,6 +66,11 @@ const CATALOG = [
   { id: 'pip', name: 'Picture-in-Picture', category: 'Interface',
     description: 'Detach any video into a floating always-on-top window.',
     default: true, cost: 'none' },
+  { id: 'backgroundPlay', name: 'Background Play', category: 'Interface',
+    description: 'Audio and video keep playing when you switch tabs, minimise the '
+      + 'window, or the screen sleeps — with hardware media-key control.',
+    default: true, cost: 'light',
+    costNote: 'A playing tab is exempted from background throttling and holds a wake lock' },
   { id: 'gestures', name: 'Trackpad Gestures', category: 'Interface',
     description: 'Swipe to navigate, pinch to zoom.', default: true, cost: 'none' },
 

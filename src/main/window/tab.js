@@ -256,6 +256,10 @@ class Tab extends EventEmitter {
     if (this.url.startsWith(INTERNAL_PREFIX)) return false;
     // A page holding a live capture or download should not be torn down.
     if (this.webContents?.isCurrentlyAudible()) return false;
+    // Background play protects more than `audible` does: a paused podcast is
+    // silent right now, but suspending it loses the playback position, which
+    // is the one thing the listener cared about.
+    if (policy.isProtected?.(this.id)) return false;
     return Date.now() - this.lastActive > policy.idleMs;
   }
 

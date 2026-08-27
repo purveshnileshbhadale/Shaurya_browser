@@ -239,6 +239,8 @@ const ICON_PATHS = {
   chart: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
   calendar: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
   snippet: 'M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2z',
+  play: 'M7 4l12 8-12 8z',
+  pause: 'M9 5v14M15 5v14',
   shuffle: 'M4 7h4l8 10h4M4 17h4l2-2.5M16 7h4M18 5l2 2-2 2M18 15l2 2-2 2',
 };
 

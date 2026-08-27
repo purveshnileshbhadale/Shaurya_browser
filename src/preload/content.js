@@ -508,6 +508,163 @@ const media = {
       .sort((a, b) => (b.clientWidth * b.clientHeight) - (a.clientWidth * a.clientHeight));
     return videos.find((v) => !v.paused) || videos[0] || null;
   },
+
+  // -- background playback (now-playing reporting) ------------------------
+
+  /**
+   * Watch this page's media and tell the main process what is playing.
+   *
+   * Two sources, and the order matters. `navigator.mediaSession.metadata` is
+   * what the site itself declares — the track title, the artist, the cover —
+   * and it is what Chrome's own media hub shows. The raw `<audio>`/`<video>`
+   * elements are the fallback for the many sites that never set it.
+   *
+   * Events, not polling: media state changes are genuinely event-driven, and
+   * a timer would be both slower to react and awake on every page that has
+   * ever contained a video tag.
+   */
+  _watched: new WeakSet(),
+  _lastSignature: '',
+
+  initPlayback() {
+    if (!IS_TOP) return;
+
+    // A preload runs before the document is parsed, so `documentElement` can
+    // still be null here. Observing null throws, and an uncaught throw in a
+    // preload takes the *whole* script down with it — including the
+    // privileged bridge — so every internal page renders blank. Defer until
+    // there is a tree to watch.
+    if (!document.documentElement) {
+      document.addEventListener('DOMContentLoaded', () => this.initPlayback(), { once: true });
+      return;
+    }
+
+    // Elements can appear at any time — a SPA router swapping in a player,
+    // an ad slot, a lazily-hydrated embed — so watch the tree rather than
+    // scanning once at load.
+    const observer = new MutationObserver(() => this._attachAll());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    this._attachAll();
+
+    // The site's own metadata is not observable, so re-read it whenever the
+    // element state changes and on a slow heartbeat for position updates.
+    setInterval(() => this._reportIfChanged(), 2000);
+  },
+
+  _attachAll() {
+    for (const el of document.querySelectorAll('audio, video')) {
+      if (this._watched.has(el)) continue;
+      this._watched.add(el);
+      for (const type of ['play', 'pause', 'ended', 'loadedmetadata', 'emptied']) {
+        el.addEventListener(type, () => this._reportIfChanged(), { passive: true });
+      }
+    }
+  },
+
+  /** The element actually producing sound right now. */
+  _activeElement() {
+    const all = [...document.querySelectorAll('audio, video')]
+      .filter((el) => el.readyState > 0 && !el.ended);
+    // A playing, unmuted element wins; then any playing one; then the
+    // longest loaded one, which is almost always the real content rather
+    // than a silent autoplaying background loop.
+    return all.find((el) => !el.paused && !el.muted)
+      || all.find((el) => !el.paused)
+      || all.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]
+      || null;
+  },
+
+  snapshot() {
+    const el = this._activeElement();
+    const meta = navigator.mediaSession?.metadata;
+
+    // A page with no media at all reports nothing, so the main process can
+    // drop it from the registry entirely.
+    if (!el && !meta) return null;
+
+    // Silent, short, looping elements are decorative — a hero background
+    // video, a hover animation. Calling one "now playing" would put noise
+    // in the media hub and hold a wake lock for a CSS effect.
+    const decorative = el && el.muted && el.loop && (el.duration || 0) < 60;
+    if (decorative && !meta) return null;
+
+    return {
+      playing: Boolean(el && !el.paused && !el.ended),
+      title: meta?.title || document.title || '',
+      artist: meta?.artist || '',
+      album: meta?.album || '',
+      artwork: meta?.artwork ? [...meta.artwork].map((a) => ({ src: a.src, sizes: a.sizes })) : null,
+      duration: Number.isFinite(el?.duration) ? el.duration : null,
+      position: Number.isFinite(el?.currentTime) ? el.currentTime : null,
+      hasVideo: Boolean(el && el.tagName === 'VIDEO' && el.videoWidth > 0),
+      canSeek: Boolean(el && Number.isFinite(el.duration)),
+      canNext: this._hasHandler('nexttrack'),
+      canPrevious: this._hasHandler('previoustrack'),
+      origin: location.origin,
+    };
+  },
+
+  /**
+   * Does the page implement a transport action?
+   *
+   * There is no way to read back a Media Session handler, so this infers it
+   * from the site having set metadata at all plus a playback state — which
+   * is what sites that wire up next/previous invariably do. Wrong in the
+   * conservative direction: a missing button, never a dead one.
+   */
+  _hasHandler(name) {
+    return Boolean(navigator.mediaSession?.metadata
+      && navigator.mediaSession.playbackState !== 'none');
+  },
+
+  _reportIfChanged() {
+    const state = this.snapshot();
+    // Position moves constantly; excluding it from the signature means a
+    // playing track sends one message every two seconds rather than one per
+    // timeupdate (which fires ~4Hz).
+    const signature = state
+      ? `${state.playing}|${state.title}|${state.artist}|${state.duration}`
+      : 'none';
+
+    const positionOnly = signature === this._lastSignature;
+    this._lastSignature = signature;
+    notify('media.state', state ? { ...state, positionOnly } : null);
+  },
+
+  /**
+   * Drive playback from the browser chrome or a media key.
+   *
+   * Prefers the page's own Media Session action handlers, because a site
+   * with a queue needs its own next-track logic to run. Falls back to the
+   * element only for play/pause, where the semantics are unambiguous.
+   */
+  control({ action, position }) {
+    const el = this._activeElement();
+
+    // There is no API to invoke a registered handler directly, so dispatch
+    // the key the site is listening for. Sites that use Media Session
+    // register for the hardware keys, and this is what reaches them.
+    if (action === 'next' || action === 'previous') {
+      const key = action === 'next' ? 'MediaTrackNext' : 'MediaTrackPrevious';
+      document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      return { ok: true, via: 'key' };
+    }
+
+    if (!el) return { ok: false, reason: 'no media element' };
+
+    switch (action) {
+      case 'play': el.play().catch(() => {}); break;
+      case 'pause': el.pause(); break;
+      case 'stop': el.pause(); el.currentTime = 0; break;
+      case 'seek':
+        if (Number.isFinite(position)) el.currentTime = position;
+        break;
+      default: return { ok: false, reason: `unknown action "${action}"` };
+    }
+
+    this._reportIfChanged();
+    return { ok: true, via: 'element' };
+  },
 };
 
 // ===========================================================================
@@ -577,6 +734,7 @@ ipcRenderer.on('aether:content-command', async (_event, id, op, payload) => {
       case 'context.forms': result = pageContext.forms(); break;
       case 'autofill.fill': result = autofill.fill(payload || {}); break;
       case 'media.pip': result = await media.requestPip(); break;
+      case 'media.control': result = media.control(payload || {}); break;
       case 'capture.begin': result = capture.begin(); break;
       case 'capture.scroll': result = capture.scrollTo(payload.y); break;
       case 'capture.end': result = capture.end(); break;
@@ -653,10 +811,28 @@ const frameStats = {
 // Bootstrap
 // ===========================================================================
 
-cosmetic.init();
-gestures.init();
-autofill.init();
-frameStats.init();
+/**
+ * Start each subsystem in isolation.
+ *
+ * An uncaught throw anywhere in a preload aborts the *entire* script, which
+ * takes down the privileged `window.aether` bridge at the bottom of this file
+ * and leaves every internal page rendering blank with no obvious cause. That
+ * has happened once already — a MutationObserver attached before the document
+ * existed — so no single subsystem gets to do it again.
+ */
+function safely(name, fn) {
+  try {
+    fn();
+  } catch (err) {
+    console.error(`[aether] preload subsystem "${name}" failed to start`, err);
+  }
+}
+
+safely('cosmetic', () => cosmetic.init());
+safely('gestures', () => gestures.init());
+safely('media', () => media.initPlayback());
+safely('autofill', () => autofill.init());
+safely('frameStats', () => frameStats.init());
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => cosmetic.scan(), { once: true });

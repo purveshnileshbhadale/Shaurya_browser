@@ -177,37 +177,66 @@ export function createTabStrip({ container, orientation }) {
       'is-hibernated': tab.hibernated,
     };
 
+    // A tab that is playing media, whether or not it is currently audible.
+    // `audible` alone misses a paused track, and that is exactly the tab
+    // someone is hunting for when they scan the strip.
+    const media = (state.media?.sessions || []).find((s) => s.tabId === tab.id);
+    classes['is-playing'] = Boolean(media?.playing);
+
     const indicators = [];
     if (tab.loading) indicators.push(h('span.tab-indicator', {}, h('span.spinner')));
-    if (tab.audible && !tab.muted) {
-      indicators.push(h('button.tab-indicator', {
-        title: 'Mute tab',
-        onclick: (e) => { e.stopPropagation(); invoke('tabs.mute', { id: tab.id, muted: true }); },
-      }, icon('volume')));
+
+    // One control, three states, always in the same place — rather than a
+    // speaker that appears only while sound is coming out and shifts the
+    // title around it every time a track pauses.
+    if (tab.audible || tab.muted || media) {
+      const muted = tab.muted;
+      indicators.push(h('button.tab-indicator.tab-audio', {
+        dataset: { state: muted ? 'muted' : media?.playing ? 'playing' : 'idle' },
+        title: muted ? 'Unmute tab'
+          : media?.playing ? `Playing: ${media.title || 'media'} — click to mute`
+            : 'Mute tab',
+        'aria-label': muted ? 'Unmute tab' : 'Mute tab',
+        onclick: (e) => {
+          e.stopPropagation();
+          invoke('tabs.mute', { id: tab.id, muted: !muted });
+        },
+      }, icon(muted ? 'mute' : 'volume')));
     }
-    if (tab.muted) {
-      indicators.push(h('button.tab-indicator', {
-        title: 'Unmute tab',
-        onclick: (e) => { e.stopPropagation(); invoke('tabs.mute', { id: tab.id, muted: false }); },
-      }, icon('mute')));
-    }
+
     if (tab.hibernated) {
       indicators.push(h('span.tab-indicator', { title: 'Suspended to save memory' }, icon('sleep')));
     }
 
+    // The native tooltip is the only place the full URL fits in a 248px
+    // sidebar, so it carries what the row had to truncate.
+    const tooltip = [
+      tab.title,
+      tab.url,
+      media?.playing ? `▸ ${[media.title, media.artist].filter(Boolean).join(' — ')}` : null,
+      tab.hibernated ? 'Suspended — click to wake' : null,
+    ].filter(Boolean).join('\n');
+
     return h('div', {
       class: classes,
       draggable: 'true',
-      title: `${tab.title}\n${tab.url}`,
+      title: tooltip,
       dataset: { key: tab.id },
+      // The strip is a list of buttons to a screen reader, not a pile of divs.
+      role: 'tab',
+      'aria-selected': String(tab.id === activeId),
     },
     h('span.tab-favicon', {}, favicon(tab.url, tab.favicon)),
     !tab.pinned && h('span.tab-title', { text: tab.title || 'Loading…' }),
     ...indicators,
-    !tab.pinned && h('button.tab-close', { title: 'Close tab' }, icon('close')));
+    !tab.pinned && h('button.tab-close', {
+      title: 'Close tab',
+      'aria-label': `Close ${tab.title || 'tab'}`,
+    }, icon('close')));
   }
 
-  subscribe('tabs', render);
+  // Media state changes the audio indicator, so the strip listens for it too.
+  subscribe(['tabs', 'media'], render);
   render();
 
   return { render, element: container };

@@ -255,8 +255,11 @@ class PerformanceService extends EventEmitter {
           const visible = new Set([win.tabs.activeId, ...(win.tabs._visible || [])]);
           for (const tab of win.tabs.list()) {
             if (visible.has(tab.id) || tab.hibernated) continue;
-            // Never silence something the user is listening to.
+            // Never silence something the user is listening to. `audible` is
+            // the narrow test; the media registry also protects a paused
+            // track whose position would be lost.
             if (policy.keepAudible !== false && tab.audible) continue;
+            if (policy.keepAudible !== false && win.tabs.isProtected?.(tab.id)) continue;
             if (tab.pinned && this.settings.get('tabs.hibernateExcludePinned') !== false) continue;
             if (await tab.hibernate()) this._turboSuspended.add(tab.id);
           }

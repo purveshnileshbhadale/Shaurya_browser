@@ -31,6 +31,16 @@ class TabManager extends EventEmitter {
     this.settings = settings;
     this.features = features;
 
+    /**
+     * Optional predicate: "is this tab protected from suspension?".
+     *
+     * Set by the window layer from the media service. Left as a stub so the
+     * tab manager works standalone in tests, and so hibernation has one
+     * question to ask rather than a growing list of special cases.
+     * @type {(tabId: string) => boolean}
+     */
+    this.isProtected = () => false;
+
     /** @type {Map<string, Tab>} */
     this.tabs = new Map();
     /** Authoritative display order (tab ids). */
@@ -431,6 +441,9 @@ class TabManager extends EventEmitter {
       idleMs: (this.settings.get('tabs.hibernateAfterMinutes') || 30) * 60_000,
       excludeAudible: this.settings.get('tabs.hibernateExcludeAudible') !== false,
       excludePinned: this.settings.get('tabs.hibernateExcludePinned') !== false,
+      // Injected rather than imported: the tab manager should not know that
+      // a media service exists, and this keeps it testable without one.
+      isProtected: this.isProtected,
     };
 
     const suspended = [];

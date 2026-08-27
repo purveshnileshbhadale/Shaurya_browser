@@ -202,6 +202,16 @@ const DEFAULTS = {
     },
   },
 
+  media: {
+    // Keep playing when the tab is backgrounded, the window is minimised, or
+    // the display sleeps. See services/media.js for why each half matters.
+    backgroundPlay: true,
+    mediaKeys: true,            // bind the hardware keys while media exists
+    preventSuspend: true,       // hold a wake lock (app, never display)
+    pausedGraceMinutes: 5,      // how long a paused tab resists hibernation
+    showInToolbar: true,        // the now-playing chip
+  },
+
   downloads: { directory: '', askEveryTime: false },
 
   shortcuts: {},                // overrides on top of the default scheme

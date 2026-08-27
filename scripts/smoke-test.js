@@ -614,6 +614,61 @@ app.whenReady().then(async () => {
     return 'programmer + gamer features in one mode';
   });
 
+  await check('the content preload survives and exposes its bridge', async () => {
+    // The failure this guards against is quiet and total: one uncaught throw
+    // anywhere in the preload aborts the whole script, so `window.aether`
+    // never appears and every internal page renders blank — while the tab
+    // itself reports a perfectly successful load.
+    const tab = win.tabs.create({ url: 'aether://start', background: true });
+    await until(() => tab.webContents && !tab.webContents.isLoading(),
+      { label: 'the start page to load' });
+
+    const probe = await tab.webContents.executeJavaScript(`
+      (() => ({
+        bridge: typeof window.aether?.invoke === 'function',
+        env: window.aether?.env?.internal === true,
+      }))()
+    `);
+    assert(probe.bridge, 'window.aether.invoke is missing — the preload threw during startup');
+    assert(probe.env, 'the preload did not mark this document internal');
+
+    // And the media watcher specifically, since it is the newest thing to
+    // run at preload time and the one that broke this before.
+    const media = await tab.webContents.executeJavaScript(
+      'document.querySelectorAll("audio, video").length >= 0');
+    assert(media, 'the document is not queryable');
+
+    win.tabs.close(tab.id);
+    return 'bridge exposed, no preload throw';
+  });
+
+  await check('background play registers and protects a playing tab', () => {
+    const { media } = container;
+    const tab = win.tabs.create({ url: 'aether://start', background: true });
+
+    media.report(tab.id, {
+      playing: true, title: 'Smoke Track', artist: 'Aether', origin: 'https://example.test',
+    });
+
+    const snapshot = media.snapshot();
+    assert(snapshot.anyPlaying, 'the registry did not record a playing session');
+    assert(snapshot.active?.title === 'Smoke Track', 'the active session is wrong');
+    assert(media.isProtected(tab.id), 'a playing tab must survive hibernation');
+
+    // The hibernation policy must actually consult it, not just expose it.
+    const policy = {
+      idleMs: 0, excludeAudible: false, excludePinned: false,
+      isProtected: (id) => media.isProtected(id),
+    };
+    assert(!tab.canHibernate(policy),
+      'hibernation ignored the media carve-out — this is how a browser kills your music');
+
+    media.clear(tab.id);
+    assert(!media.snapshot().anyPlaying, 'clearing did not drop the session');
+    win.tabs.close(tab.id);
+    return 'registered, protected, released';
+  });
+
   await check('every internal mode page loads and renders', async () => {
     // These are only reachable at runtime — the HUD and teleprompter live in
     // always-on-top windows and the blocker page is a redirect target — so

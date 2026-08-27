@@ -156,7 +156,7 @@ const INVOKE = [
   'capture.region', 'capture.visible', 'capture.fullPage', 'capture.save',
   'capture.copy',
   'reader.toggle', 'reader.state',
-  'media.pictureInPicture',
+  'media.pictureInPicture', 'media.nowPlaying', 'media.control', 'media.reveal',
 
   // --- sync -------------------------------------------------------------
   'sync.status', 'sync.enroll', 'sync.pair', 'sync.now', 'sync.disable',
@@ -189,6 +189,7 @@ const EVENTS = [
   'recorder:state', 'recorder:clip',
   'stream:changed', 'games:changed', 'deals:changed',
   'creator:changed', 'student:changed', 'student:timer', 'ghost:changed',
+  'media:changed',
   'devtools:changed', 'terminal:data',
   'adblock:count', 'adblock:lists',
   'permissions:prompt', 'permissions:changed',

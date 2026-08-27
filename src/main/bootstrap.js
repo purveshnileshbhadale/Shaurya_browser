@@ -30,6 +30,7 @@ const { ReaderService } = require('./services/reader');
 const { PwaService } = require('./services/pwa');
 const { SearchService } = require('./services/search');
 const { ShortcutService } = require('./services/shortcuts');
+const { MediaService } = require('./services/media');
 const { AiService } = require('./services/ai');
 const { NotesService } = require('./services/ai/notes');
 const { HttpClientService } = require('./services/devtools/http-client');
@@ -106,6 +107,7 @@ async function bootstrap() {
   container.reader = new ReaderService(container.content, container.features);
   container.pwa = new PwaService(container.settings, container.features);
   container.shortcuts = new ShortcutService(container.settings);
+  container.media = new MediaService(container);
 
   container.ai = new AiService(container.settings, container.features, container.content, container.vault);
   container.notes = new NotesService(container.settings, container.features, container.ai);
@@ -237,6 +239,18 @@ async function bootstrap() {
   container.performance.attach(container.windowManager);
   container.ghost.attach(container.windowManager);
   container.ghost.applyStoredDoh();
+  container.media.attach(container.windowManager);
+
+  // Hibernation and Turbo ask one question — "is this tab protected?" — and
+  // the media registry answers it. Wired per window as they are created so
+  // neither the tab manager nor the performance service needs to know that a
+  // media service exists.
+  const wireMediaProtection = (win) => {
+    win.tabs.isProtected = (tabId) => container.media.isProtected(tabId);
+    win.tabs.on('closed', ({ id }) => container.media.clear(id));
+  };
+  for (const win of container.windowManager.list()) wireMediaProtection(win);
+  container.windowManager.on('created', wireMediaProtection);
 
   container.modes.on('changed', (snapshot) => {
     applyTheme(container);
@@ -350,6 +364,33 @@ function wireCrossServiceEvents(container) {
   container.content.on('frameStats', (payload, { sender }) => {
     const found = windowManager.locateTab(sender?.id);
     if (found?.tab) performance.recordFrameStats(found.tab.id, payload);
+  });
+
+  // --- background play ---------------------------------------------------
+  // A page announced (or withdrew) its media. Attributed to the sending tab,
+  // never to anything in the payload, so one page cannot claim to be another.
+  container.content.on('media.state', (payload, { sender }) => {
+    const found = windowManager.locateTab(sender?.id);
+    if (!found?.tab) return;
+    if (payload) container.media.report(found.tab.id, payload);
+    else container.media.clear(found.tab.id);
+  });
+
+  container.media.on('changed', (snapshot) => {
+    windowManager.broadcast('media:changed', snapshot);
+  });
+
+  // A tab that navigates away has left its media behind, whatever the old
+  // page last reported. Without this, closing a video and opening a text
+  // article would leave a phantom track in the now-playing list.
+  windowManager.on('navigation', ({ tabId, phase }) => {
+    if (phase === 'commit') container.media.clear(tabId);
+  });
+
+  // Turning background play off mid-session must release the wake lock and
+  // the media keys immediately, not at the next track change.
+  features.on('toggled', ({ id }) => {
+    if (id === 'backgroundPlay') container.media.refresh();
   });
 
   // Sampling is off until something needs it, so an ordinary browsing

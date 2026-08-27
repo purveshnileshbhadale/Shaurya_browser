@@ -65,6 +65,7 @@ export const state = {
   ghost: { tor: {}, doh: {}, breach: {} },
   devtools: { docker: null, mocks: [], snippets: null, graphql: null },
   terminal: { sessions: [], output: {} },
+  media: { sessions: [], active: null, activeId: null, anyPlaying: false, backgroundPlay: true },
 };
 
 /**
@@ -247,6 +248,7 @@ function wireEvents() {
   on('student:timer', (t) => update('student', (st) => ({ ...st, timer: t })));
   on('ghost:changed', (s) => update('ghost', (g) => ({ ...g, ...s })));
   on('devtools:changed', (s) => update('devtools', (d) => ({ ...d, ...s })));
+  on('media:changed', (s) => set('media', s));
   on('profiles:changed', (profiles) => set('profiles', profiles));
 
   on('adblock:count', (stats) => set('adblock', stats));

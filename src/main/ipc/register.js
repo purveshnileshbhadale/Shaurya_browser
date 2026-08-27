@@ -827,6 +827,9 @@ function registerHandlers(c) {
       if (!tab?.webContents) throw new Error('no tab');
       return c.content.command(tab.webContents, 'media.pip');
     },
+    nowPlaying: () => c.media.snapshot(),
+    control: (p) => c.media.control(p?.action, { tabId: p?.tabId, position: p?.position }),
+    reveal: (p) => c.media.reveal(p?.tabId),
   });
 
   // =========================================================================

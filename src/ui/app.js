@@ -16,6 +16,7 @@ import { createToolbar } from './components/toolbar.js';
 import { createPanel } from './components/panels.js';
 import { createModeSwitcher, createQuickActions } from './components/mode-switcher.js';
 import { createGamepadNavigation } from './components/gamepad.js';
+import { createNowPlaying } from './components/now-playing.js';
 import { prettyAccelerator } from './components/palette.js';
 
 const shell = $('#shell');
@@ -96,6 +97,11 @@ function wireShellChrome() {
   const quickActions = h('div.quick-actions');
   modeBar.appendChild(quickActions);
   createQuickActions({ container: quickActions });
+
+  // The now-playing bar sits directly above the footer controls: it appears
+  // and disappears with playback, so anchoring it to the bottom keeps the
+  // tab list from shifting under the pointer when a track starts.
+  createNowPlaying({ container: $('#sidebar-foot').parentElement });
 
   // --- sidebar footer ---
   $('#sidebar-foot').append(
