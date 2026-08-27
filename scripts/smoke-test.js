@@ -642,9 +642,11 @@ app.whenReady().then(async () => {
     return 'bridge exposed, no preload throw';
   });
 
-  await check('background play registers and protects a playing tab', () => {
+  await check('background play registers and protects a playing tab', async () => {
     const { media } = container;
     const tab = win.tabs.create({ url: 'aether://start', background: true });
+    await until(() => tab.webContents && !tab.webContents.isLoading(),
+      { label: 'the tab to finish loading' });
 
     media.report(tab.id, {
       playing: true, title: 'Smoke Track', artist: 'Aether', origin: 'https://example.test',
@@ -702,6 +704,82 @@ app.whenReady().then(async () => {
 
     win.tabs.close(tab.id);
     return rendered.join(', ');
+  });
+
+  await check('the now-playing bar appears with playback and clears with it', async () => {
+    const { media } = container;
+    const tab = win.tabs.create({ url: 'aether://start', background: true });
+    // Let the navigation commit first. A committing document clears the media
+    // session of the one it replaced, which is correct — but here it would
+    // race the report below, since a real page cannot announce media before
+    // its own document exists.
+    await until(() => tab.webContents && !tab.webContents.isLoading(),
+      { label: 'the tab to finish loading' });
+
+    const read = () => win.shellView.webContents.executeJavaScript(`
+      (() => {
+        const el = document.querySelector('.now-playing');
+        if (!el) return null;
+        return {
+          visible: el.dataset.visible === 'true',
+          playing: el.dataset.playing === 'true',
+          title: el.querySelector('.np-title')?.textContent,
+          subtitle: el.querySelector('.np-subtitle')?.textContent,
+        };
+      })()
+    `);
+
+    const before = await read();
+    assert(before, 'the now-playing element is not in the DOM');
+    assert(!before.visible, 'it should be collapsed when nothing is playing');
+
+    media.report(tab.id, {
+      playing: true, title: 'Nocturne in E-flat', artist: 'Chopin',
+      origin: 'https://music.example',
+    });
+    const shown = await until(async () => {
+      const found = await read();
+      return found?.visible ? found : null;
+    }, { label: 'the now-playing bar to appear' });
+
+    assert(shown.title === 'Nocturne in E-flat', `title read "${shown.title}"`);
+    assert(shown.subtitle === 'Chopin', `subtitle read "${shown.subtitle}"`);
+    assert(shown.playing, 'it should reflect the playing state');
+    await capture(win, 'now-playing');
+
+    media.clear(tab.id);
+    await until(async () => {
+      const found = await read();
+      return found && !found.visible;
+    }, { label: 'the now-playing bar to collapse' });
+
+    win.tabs.close(tab.id);
+    return `"${shown.title}" — ${shown.subtitle}`;
+  });
+
+  await check('omnibox suggestions group and highlight the typed run', async () => {
+    const found = await win.shellView.webContents.executeJavaScript(`
+      (async () => {
+        const input = document.querySelector('.omnibox-input');
+        input.style.display = '';
+        input.focus();
+        input.value = 'set';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        await new Promise((r) => setTimeout(r, 500));
+        const box = document.querySelector('.omnibox-suggestions');
+        return {
+          rows: box.querySelectorAll('.suggestion').length,
+          groups: box.querySelectorAll('.suggestion-group').length,
+          marks: box.querySelectorAll('.suggestion-title mark').length,
+          enterHint: box.querySelectorAll('.suggestion-enter').length,
+        };
+      })()
+    `);
+
+    assert(found.rows > 0, 'no suggestions rendered');
+    // Exactly one Enter hint, on the selected row — not one per row.
+    assert(found.enterHint === 1, `${found.enterHint} Enter hints, expected 1`);
+    return `${found.rows} rows, ${found.groups} group(s), ${found.marks} highlighted`;
   });
 
   await check('the mode switcher tracks the active mode and its panels', async () => {

@@ -1162,3 +1162,67 @@
   background: var(--accent);
 }
 .tab { position: relative; }
+
+/* ---- omnibox suggestions --------------------------------------------------
+   Grouped, with the typed run emphasised. The eye locks onto the bold match
+   rather than reading each row, which is the difference between a list you
+   scan and a list you have to parse. */
+
+.suggestion-group {
+  padding: 8px 12px 4px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+}
+.suggestion-group:first-child { padding-top: 6px; }
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  margin: 0 4px;
+}
+
+.suggestion-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-secondary);
+}
+.suggestion-icon svg { width: 13px; height: 13px; }
+
+.suggestion.is-selected { background: var(--accent-soft); }
+.suggestion.is-selected .suggestion-icon { background: var(--accent); color: var(--accent-text); }
+
+.suggestion-text { min-width: 0; flex: 1; }
+.suggestion-title { font-size: var(--fs); line-height: 1.4; }
+.suggestion-sub { font-size: var(--fs-xs); color: var(--text-tertiary); line-height: 1.35; }
+
+/* The matched run. `mark` carries the meaning for assistive tech; the styling
+   is ours because the UA default is a yellow highlight. */
+.suggestion-title mark {
+  background: none;
+  color: inherit;
+  font-weight: 700;
+}
+.suggestion.is-selected .suggestion-title mark { color: var(--accent); }
+
+.suggestion-enter {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}

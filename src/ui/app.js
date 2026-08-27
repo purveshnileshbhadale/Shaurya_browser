@@ -101,7 +101,12 @@ function wireShellChrome() {
   // The now-playing bar sits directly above the footer controls: it appears
   // and disappears with playback, so anchoring it to the bottom keeps the
   // tab list from shifting under the pointer when a track starts.
-  createNowPlaying({ container: $('#sidebar-foot').parentElement });
+  const foot = $('#sidebar-foot');
+  const nowPlaying = createNowPlaying({ container: foot.parentElement });
+  // Above the footer controls, not after them: the footer is a fixed row of
+  // targets, and pushing it down when a track starts would move a button out
+  // from under the pointer.
+  foot.parentElement.insertBefore(nowPlaying.element, foot);
 
   // --- sidebar footer ---
   $('#sidebar-foot').append(

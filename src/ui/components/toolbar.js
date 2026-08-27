@@ -21,6 +21,40 @@ const BASELINE_PANEL_META = {
   dev: { label: 'Developer', icon: 'code' },
 };
 
+/** Headings for grouped omnibox results. Unlisted kinds render ungrouped. */
+const KIND_LABELS = {
+  tab: 'Open tabs',
+  history: 'History',
+  bookmark: 'Bookmarks',
+  search: 'Search',
+  url: 'Go to',
+  setting: 'Settings',
+  extension: 'Extensions',
+  snippet: 'Snippets',
+};
+
+/**
+ * Split a label around the typed substring so the match can be emphasised.
+ *
+ * Returns nodes rather than HTML: suggestion titles come from page titles and
+ * history, which is attacker-influenced text, and this renderer is privileged.
+ * Building text nodes means there is no string concatenation to get wrong.
+ */
+function highlight(text, query) {
+  const label = String(text || '');
+  const needle = String(query || '').trim();
+  if (!needle || needle.length < 2) return [document.createTextNode(label)];
+
+  const at = label.toLowerCase().indexOf(needle.toLowerCase());
+  if (at === -1) return [document.createTextNode(label)];
+
+  return [
+    document.createTextNode(label.slice(0, at)),
+    h('mark', { text: label.slice(at, at + needle.length) }),
+    document.createTextNode(label.slice(at + needle.length)),
+  ];
+}
+
 export function createToolbar({ container }) {
   let inputEl = null;
   let suggestionsEl = null;
@@ -177,18 +211,37 @@ export function createToolbar({ container }) {
       return;
     }
 
+    // Group by kind with a heading on each run. An undifferentiated list of
+    // twelve rows makes the user read every one; a labelled run of three lets
+    // them jump straight to the section they meant. Headings are rendered
+    // only when the kind actually changes, so a homogeneous list stays flat.
+    const typed = inputEl.value.trim();
+    let lastKind = null;
+
     for (const [i, result] of results.entries()) {
+      if (result.kind && result.kind !== lastKind) {
+        lastKind = result.kind;
+        const label = KIND_LABELS[result.kind];
+        if (label) suggestionsEl.appendChild(h('div.suggestion-group', { text: label }));
+      }
+
       suggestionsEl.appendChild(h('div.suggestion', {
         class: { 'is-selected': i === 0 },
-        dataset: { index: String(i) },
+        dataset: { index: String(i), kind: result.kind || 'other' },
+        role: 'option',
+        'aria-selected': String(i === 0),
         onmousedown: (e) => { e.preventDefault(); commit(result); },
         onmouseenter: () => selectSuggestion(i),
       },
-      icon(result.icon || 'globe'),
+      h('span.suggestion-icon', {}, icon(result.icon || 'globe')),
       h('div.suggestion-text', {},
-        h('div.suggestion-title.truncate', { text: result.title }),
+        // Highlighting what the user typed is what makes a suggestion list
+        // scannable — the eye locks onto the bold run rather than reading.
+        h('div.suggestion-title.truncate', {}, ...highlight(result.title, typed)),
         h('div.suggestion-sub.truncate', { text: result.subtitle || '' })),
-      result.kind === 'tab' && h('span.chip', { text: 'Switch' })));
+      // Only the action a row performs, and only where it is not obvious.
+      result.kind === 'tab' ? h('span.chip', { text: 'Switch to' }) : null,
+      i === 0 ? h('kbd.suggestion-enter', { text: '↵' }) : null));
     }
 
     const rect = omnibox.getBoundingClientRect();
@@ -203,7 +256,14 @@ export function createToolbar({ container }) {
   function selectSuggestion(index) {
     state.omnibox.selectedIndex = index;
     for (const el of suggestionsEl.children) {
-      el.classList.toggle('is-selected', Number(el.dataset.index) === index);
+      if (!el.dataset.index) continue;   // a group heading, not a row
+      const selected = Number(el.dataset.index) === index;
+      el.classList.toggle('is-selected', selected);
+      el.setAttribute('aria-selected', String(selected));
+      // The Enter hint follows the selection rather than sitting on row zero
+      // forever, so it always shows what pressing Enter will actually do.
+      el.querySelector('.suggestion-enter')?.remove();
+      if (selected) el.appendChild(h('kbd.suggestion-enter', { text: '↵' }));
     }
   }
 

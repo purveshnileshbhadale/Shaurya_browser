@@ -21,7 +21,10 @@ import { state, subscribe, invoke, toast } from '../core/store.js';
 
 export function createNowPlaying({ container }) {
   let currentId = null;
-  let currentArt = null;
+  // Deliberately `undefined`, not `null`: a session with no artwork reports
+  // `null`, so starting at `null` would make the first render think nothing
+  // had changed and leave the art slot empty.
+  let currentArt;
 
   const art = h('div.np-art');
   const title = h('div.np-title');
