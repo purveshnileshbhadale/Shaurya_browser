@@ -251,6 +251,15 @@ buttons from one place, and the service starts only while something is
 playing — a browser holding a foreground service the whole time it is open
 would be killed for it on Android 12+.
 
+The interface is Material 3 proper: dynamic colour on Android 12+, and below
+that a full tonal palette grown from the stored accent rather than a single
+role swapped on a default scheme. The tab switcher is a grid of live page
+thumbnails — captured when a tab stops being visible, since a backgrounded
+`WebView` photographs blank, and never captured at all for a private tab.
+Now playing sits above the bottom bar, edge-to-edge is honoured in both
+directions, back is predictive, and every animation collapses to nothing when
+the device asks for no motion.
+
 **The APK is built by CI and compiles clean** — build, unit tests and lint all
 green on the first run. The Android SDK ships only from `dl.google.com`, which
 is not reachable from every environment, so CI is the reliable path:
