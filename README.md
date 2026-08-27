@@ -120,6 +120,19 @@ settings and installed extensions in one ranked list.
 Tab hibernation destroys the renderer process of an idle tab — memory returns to
 the OS — while keeping its thumbnail, title and navigation history.
 
+**Background play** keeps audio and video running when you switch tabs,
+minimise the window or the screen sleeps. That is a carve-out in four places
+at once, and the one people miss is background throttling: Chromium throttles
+timers in background renderers, and while the audio element survives that, the
+site's *own player* — the code advancing the queue and refreshing the stream
+token — does not, so playback stops at the end of the track and it reads as
+the site breaking. A playing tab is exempted from throttling, protected from
+hibernation and from Turbo, and holds a wake lock on the app (never the
+display — your screen still turns off). Hardware media keys are bound only
+while something is playing, so they are not taken from Spotify while you
+browse. A now-playing bar in the sidebar pauses it in one click or jumps to
+whichever of forty tabs is making the noise.
+
 Also: screenshot with region/full-page capture and annotation, reader mode,
 picture-in-picture, trackpad gestures, per-profile themes and accent colours.
 
@@ -229,6 +242,14 @@ the first mobile release: the same ad blocker (the filter engine is ported, not
 reimplemented), the AI assistant, notes, private tabs and encrypted local
 storage. Blocking runs in `shouldInterceptRequest`, WebView's equivalent of the
 desktop hook.
+
+Background play works here too, and on Android it is the difference between
+having the feature and not: a WebView with no foreground service is silenced
+within seconds of the screen going off. A `MediaSessionCompat` drives the
+lock-screen controls, the notification transport and Bluetooth headset
+buttons from one place, and the service starts only while something is
+playing — a browser holding a foreground service the whole time it is open
+would be killed for it on Android 12+.
 
 **The APK is built by CI and compiles clean** — build, unit tests and lint all
 green on the first run. The Android SDK ships only from `dl.google.com`, which

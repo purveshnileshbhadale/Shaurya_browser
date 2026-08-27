@@ -632,7 +632,23 @@ function renderTabs() {
     numberRow('Suspend after (minutes)', 'tabs.hibernateAfterMinutes', { min: 1, max: 600 }),
     toggleRow('Never suspend tabs playing audio', 'tabs.hibernateExcludeAudible'),
     toggleRow('Never suspend pinned tabs', 'tabs.hibernateExcludePinned'),
-    toggleRow('Open links in the background', 'tabs.openInBackground')
+    toggleRow('Open links in the background', 'tabs.openInBackground'),
+
+    el('h3', '', 'Background play'),
+    el('p', 'section-note',
+      'Audio and video keep playing when you switch tabs, minimise the window, or the '
+      + 'screen sleeps. A playing tab is exempted from Chromium’s background '
+      + 'throttling — without that the site’s own player stalls at the end of the '
+      + 'current track even though the audio element is still alive.'),
+    toggleRow('Keep media playing in the background', 'media.backgroundPlay'),
+    toggleRow('Respond to hardware media keys', 'media.mediaKeys'),
+    toggleRow('Prevent sleep while playing', 'media.preventSuspend'),
+    numberRow('Keep a paused tab awake for (minutes)', 'media.pausedGraceMinutes',
+      { min: 0, max: 120 }),
+    el('p', 'section-note',
+      'Sleep prevention keeps the application awake, never the display — your screen '
+      + 'still turns off. Media keys are only bound while something is playing, so they '
+      + 'are not taken away from other players while you browse.')
   );
   return section;
 }
