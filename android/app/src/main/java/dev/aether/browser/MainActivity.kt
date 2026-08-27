@@ -1,6 +1,9 @@
 package dev.aether.browser
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -12,15 +15,22 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -29,6 +39,8 @@ import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import dev.aether.browser.media.PlaybackService
 import dev.aether.browser.ui.AetherTheme
+import dev.aether.browser.ui.LocalReducedMotion
+import dev.aether.browser.ui.isDarkTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -45,15 +57,101 @@ class MainActivity : ComponentActivity() {
     /** tab id -> its live WebView. */
     private val webViews = mutableMapOf<Long, WebView>()
 
+    /**
+     * Tab id -> a picture of what that tab last looked like.
+     *
+     * Compose-observable, so a capture repaints the switcher without any
+     * explicit invalidation. Bounded, because these are the only genuinely
+     * large objects the app holds: a phone-sized ARGB bitmap is megabytes,
+     * and a browser with thirty tabs would spend more memory remembering what
+     * they looked like than rendering them.
+     */
+    private val thumbnails = mutableStateMapOf<Long, ImageBitmap>()
+
+    /** Capture order, oldest first, so the cap evicts the least recent. */
+    private val thumbnailOrder = ArrayDeque<Long>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
+            val dark = isDarkTheme(model.store.settings.theme)
+
+            // Transparent bars in both directions, but the *icon* colour has
+            // to follow the theme: edge-to-edge means our own surface is what
+            // shows through the status bar, and dark icons on a dark toolbar
+            // are simply not there.
+            LaunchedEffect(dark) {
+                val style = if (dark) {
+                    SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    )
+                }
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+            }
+
             AetherTheme(accent = model.store.settings.accent, themeMode = model.store.settings.theme) {
+                // Paint the WebView's own backing to match, or every
+                // navigation flashes white before the page paints — the most
+                // noticeable remaining seam in a dark theme.
+                val backing = MaterialTheme.colorScheme.surface.toArgb()
+                LaunchedEffect(backing) {
+                    webViews.values.forEach { it.setBackgroundColor(backing) }
+                }
                 BrowserScreen()
             }
+        }
+    }
+
+    /**
+     * Photograph a tab for the switcher.
+     *
+     * `WebView.draw` renders whatever is currently composited, which means
+     * this is only meaningful for a tab that is on screen — capturing a
+     * backgrounded tab yields a blank rectangle. So it is called at the
+     * moment a tab stops being visible, not when the switcher opens.
+     *
+     * Private tabs are never captured. A thumbnail is a record of what was on
+     * screen, and the whole promise of a private tab is that no such record
+     * is kept.
+     */
+    private fun captureThumbnail(tabId: Long) {
+        val view = webViews[tabId] ?: return
+        if (view.width <= 0 || view.height <= 0) return
+        if (model.tabs.value.firstOrNull { it.id == tabId }?.incognito == true) return
+
+        val scale = 0.32f
+        val width = (view.width * scale).toInt().coerceAtLeast(1)
+        val height = (view.height * scale).toInt().coerceAtLeast(1)
+
+        // RGB_565 is half the bytes of ARGB_8888 and loses nothing that
+        // survives being scaled to a third and shown at card size.
+        val bitmap = runCatching {
+            Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        }.getOrNull() ?: return
+
+        val canvas = Canvas(bitmap)
+        canvas.scale(scale, scale)
+        runCatching { view.draw(canvas) }.onFailure { return }
+
+        thumbnails[tabId] = bitmap.asImageBitmap()
+        thumbnailOrder.remove(tabId)
+        thumbnailOrder.addLast(tabId)
+        trimThumbnails()
+    }
+
+    /** Keep the cache bounded and free of pictures for tabs that are gone. */
+    private fun trimThumbnails() {
+        val live = model.tabs.value.mapTo(mutableSetOf()) { it.id }
+        thumbnailOrder.retainAll { it in live }
+        thumbnails.keys.retainAll(live)
+
+        while (thumbnailOrder.size > MAX_THUMBNAILS) {
+            thumbnails.remove(thumbnailOrder.removeFirst())
         }
     }
 
@@ -69,6 +167,10 @@ class MainActivity : ComponentActivity() {
      */
     override fun onPause() {
         super.onPause()
+        // Last chance to photograph what is on screen: after this the window
+        // is no longer composited and a capture draws nothing.
+        captureThumbnail(model.activeTabId.value)
+
         if (isPlayingMedia()) {
             startPlaybackService()
         } else {
@@ -170,14 +272,17 @@ class MainActivity : ComponentActivity() {
     // Screen
     // -----------------------------------------------------------------------
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun BrowserScreen() {
         val tabs by model.tabs.collectAsStateWithLifecycle()
         val activeId by model.activeTabId.collectAsStateWithLifecycle()
         val assistant by model.assistant.collectAsStateWithLifecycle()
+        val playingTabId by model.playingTabId.collectAsStateWithLifecycle()
+        val playingTitle by model.playingTitle.collectAsStateWithLifecycle()
+        val playingArtist by model.playingArtist.collectAsStateWithLifecycle()
         val scope = rememberCoroutineScope()
         val snackbar = remember { SnackbarHostState() }
+        val reducedMotion = LocalReducedMotion.current
 
         var addressText by remember { mutableStateOf("") }
         var editingAddress by remember { mutableStateOf(false) }
@@ -186,8 +291,22 @@ class MainActivity : ComponentActivity() {
 
         val active = tabs.firstOrNull { it.id == activeId }
 
-        // Hardware back navigates the page before it leaves the app.
-        BackHandler(enabled = active?.canGoBack == true) {
+        val nowPlaying = playingTabId?.let { id ->
+            NowPlaying(
+                tabId = id,
+                title = playingTitle.ifBlank { tabs.firstOrNull { it.id == id }?.title.orEmpty() },
+                artist = playingArtist,
+                playing = true,
+            )
+        }
+
+        // Hardware and gesture back: leave the switcher, then walk the page's
+        // history, and only then leave the app. Registering these as ordered
+        // handlers is also what makes the predictive-back animation show the
+        // right destination — the system needs to know something will consume
+        // the gesture before the finger lifts.
+        BackHandler(enabled = showTabs) { showTabs = false }
+        BackHandler(enabled = !showTabs && active?.canGoBack == true) {
             webViews[activeId]?.goBack()
         }
 
@@ -198,14 +317,15 @@ class MainActivity : ComponentActivity() {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
-                // Bottom toolbar: on a phone the address bar belongs where
-                // thumbs are, not at the top of a 6-inch screen.
-                Toolbar(
+                BottomBar(
                     text = addressText,
                     editing = editingAddress,
                     tab = active,
+                    tabCount = tabs.size,
                     // From tab state, so the badge recomposes as the count changes.
                     blockedCount = active?.blockedCount ?: 0,
+                    suggestions = if (editingAddress) model.suggestions(addressText) else emptyList(),
+                    nowPlaying = nowPlaying,
                     onTextChange = { addressText = it },
                     onEditingChange = { editingAddress = it },
                     onGo = {
@@ -214,18 +334,26 @@ class MainActivity : ComponentActivity() {
                         editingAddress = false
                     },
                     onBack = { webViews[activeId]?.goBack() },
+                    onForward = { webViews[activeId]?.goForward() },
                     onReload = {
                         if (active?.loading == true) webViews[activeId]?.stopLoading()
                         else webViews[activeId]?.reload()
                     },
-                    onTabs = { showTabs = true },
+                    onTabs = {
+                        // Photograph the tab being left *before* the switcher
+                        // covers it: a WebView that is no longer composited
+                        // draws as a blank rectangle.
+                        captureThumbnail(activeId)
+                        showTabs = true
+                    },
                     onMenu = { showMenu = true },
                     onAssistant = { model.toggleAssistant() },
-                    suggestions = if (editingAddress) model.suggestions(addressText) else emptyList(),
                     onSuggestion = { url ->
                         webViews[activeId]?.loadUrl(url)
                         editingAddress = false
                     },
+                    onPlayPause = { playingTabId?.let { evaluateMedia(it, "pause") } },
+                    onOpenPlaying = { playingTabId?.let { model.activateTab(it) } },
                 )
             }
         ) { padding ->
@@ -233,22 +361,50 @@ class MainActivity : ComponentActivity() {
                 if (active != null) {
                     WebViewHost(tabId = active.id, initialUrl = active.url)
                 }
-                if (active?.loading == true && active.progress in 1..99) {
+                // Only while a page is actually fetching. A bar that appears
+                // at 0 and vanishes at 100 on every same-page anchor click is
+                // a flicker, not information.
+                AnimatedVisibility(
+                    visible = active?.loading == true && active.progress in 1..99,
+                    enter = fadeIn(tween(if (reducedMotion) 0 else 120)),
+                    exit = fadeOut(tween(if (reducedMotion) 0 else 220)),
+                    modifier = Modifier.align(Alignment.TopCenter),
+                ) {
                     LinearProgressIndicator(
-                        progress = { active.progress / 100f },
-                        modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+                        progress = { (active?.progress ?: 0) / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                        drawStopIndicator = {},
                     )
                 }
             }
         }
 
         if (showTabs) {
-            TabSheet(
+            TabGrid(
                 tabs = tabs,
                 activeId = activeId,
+                thumbnails = thumbnails,
                 onSelect = { model.activateTab(it); showTabs = false },
-                onClose = { model.closeTab(it) },
-                onNew = { model.newTab(); showTabs = false },
+                onClose = { id ->
+                    thumbnails.remove(id)
+                    webViews.remove(id)?.destroy()
+                    model.closeTab(id)
+                },
+                onNew = { incognito ->
+                    model.newTab(incognito = incognito)
+                    showTabs = false
+                },
+                onCloseAll = {
+                    // Tear the views down explicitly. `closeTab` only knows
+                    // about the model; a WebView left in the map would keep
+                    // its renderer process alive with nothing pointing at it.
+                    tabs.map { it.id }.forEach { id ->
+                        thumbnails.remove(id)
+                        webViews.remove(id)?.destroy()
+                        model.closeTab(id)
+                    }
+                    showTabs = false
+                },
                 onDismiss = { showTabs = false },
             )
         }
@@ -262,6 +418,11 @@ class MainActivity : ComponentActivity() {
                     model.store.addBookmark(active.url, active.title)
                     scope.launch { snackbar.showSnackbar("Bookmarked") }
                     showMenu = false
+                },
+                onShare = {
+                    active ?: return@MenuSheet
+                    showMenu = false
+                    sharePage(active.url, active.title)
                 },
                 onNotes = {
                     showMenu = false
@@ -296,6 +457,17 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
+    /** Hand the current page to whatever the user shares with. */
+    private fun sharePage(url: String, title: String) {
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, url)
+            putExtra(Intent.EXTRA_TITLE, title)
+        }
+        startActivity(Intent.createChooser(share, null))
+    }
+
 
     // -----------------------------------------------------------------------
     // WebView
@@ -542,6 +714,18 @@ class MainActivity : ComponentActivity() {
 
     private fun currentPageUrl(tabId: Long): String? =
         model.tabs.value.firstOrNull { it.id == tabId }?.url
+
+    private companion object {
+        /**
+         * How many tab thumbnails to keep.
+         *
+         * At roughly a third scale in RGB_565 each is a few hundred kilobytes,
+         * so twelve is single-digit megabytes — enough that the tabs someone
+         * actually moves between are always drawn, while a browser left open
+         * with forty tabs cannot quietly accumulate a bitmap for each one.
+         */
+        const val MAX_THUMBNAILS = 12
+    }
 
     private fun isLocalAddress(host: String?): Boolean {
         if (host == null) return false

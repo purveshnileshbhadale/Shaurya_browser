@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dark counterpart, picked up automatically when the system is in
+         dark mode. It cannot follow an in-app "always dark" override, which
+         resolves after the window already exists. -->
+    <color name="launch_background">#FF0D0E11</color>
+</resources>

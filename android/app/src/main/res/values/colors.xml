@@ -2,4 +2,14 @@
 <resources>
     <color name="aether_accent">#FF6C8CFF</color>
     <color name="aether_background">#FFF6F7F9</color>
+
+    <!--
+        What the window shows for the fraction of a second between the system
+        creating it and Compose painting the first frame. It has to be close
+        to the theme's surface: a light flash on the way into a dark app is
+        the single most noticeable launch defect there is, and a transparent
+        window background is worse still — it shows whatever was on screen
+        before.
+    -->
+    <color name="launch_background">#FFFCFCFD</color>
 </resources>

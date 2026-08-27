@@ -311,3 +311,37 @@ Differences forced by the platform:
 - Secrets go in `EncryptedSharedPreferences` (hardware keystore), never the JSON.
 - One `WebView` per tab, retained across switches so history and scroll position
   survive, keyed in Compose so switching tabs does not reuse the previous slot.
+
+### Colour
+
+`ui/Palette.kt` grows a full Material scheme from one seed colour, for the
+devices and settings where Material You is not doing it for us — Android 11 and
+below, and any user who has picked their own accent.
+
+The thing to know before touching it: **a Material tone number is CIE L\***,
+perceived lightness, not HSL's `L`. Setting `lightness = tone / 100` is the
+obvious implementation and it is wrong. HSL calls a saturated yellow at L=0.4
+"mid" while the eye reads it as nearly white, so tone 40 lands at a different
+brightness for every hue and Material's guaranteed pairings stop being
+readable: white on a yellow tone-40 measures 2.2:1, against the 4.5:1 that text
+needs. `Palette.tone` therefore binary-searches HSL lightness until the result's
+*measured* L\* matches the tone asked for. Every Material pairing then clears
+6:1 at every hue, which `PaletteTest` asserts directly.
+
+It is still not full HCT — hue and chroma are HSL's, so two seeds at equal
+nominal chroma are not equally colourful. That affects how vivid the palette
+looks. Contrast, the part that decides whether the app is usable, is exact.
+
+### Tab thumbnails
+
+`WebView.draw` renders what is *currently composited*, so a backgrounded tab
+photographs as a blank rectangle. Captures therefore happen at the moment a tab
+stops being visible — opening the switcher, and `onPause` — never when the
+switcher asks for them.
+
+Private tabs are never captured at all. A thumbnail is a record of what was on
+screen, and that is the one thing a private tab promises not to keep.
+
+The cache is capped at twelve because these bitmaps are the only large objects
+the app holds; without a cap a browser left open with forty tabs spends more
+memory remembering what they looked like than rendering them.

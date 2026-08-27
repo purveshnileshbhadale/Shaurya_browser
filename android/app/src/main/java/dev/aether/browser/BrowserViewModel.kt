@@ -216,10 +216,19 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         store.searchHistory(query, 6)
             .forEach { results.add(Suggestion(it.title, it.url, SuggestionKind.HISTORY)) }
 
+        val resolved = resolveInput(query)
+        // Offer the search explicitly rather than leaving it implicit in the
+        // Go key. Half-typed queries look like addresses ("git status") and a
+        // list that only ever offers history gives no way to say "no, search
+        // for what I actually typed".
+        if (resolved.startsWith(searchUrl(""))) {
+            results.add(0, Suggestion("Search for \u201C$query\u201D", resolved, SuggestionKind.SEARCH))
+        }
+
         return results.distinctBy { it.url }.take(8)
     }
 
-    enum class SuggestionKind { HISTORY, BOOKMARK }
+    enum class SuggestionKind { HISTORY, BOOKMARK, SEARCH }
     data class Suggestion(val title: String, val url: String, val kind: SuggestionKind)
 
     // -----------------------------------------------------------------------
