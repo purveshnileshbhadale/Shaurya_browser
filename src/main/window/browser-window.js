@@ -16,6 +16,7 @@
 const path = require('node:path');
 const EventEmitter = require('node:events');
 const { BaseWindow, WebContentsView, nativeTheme, screen } = require('electron');
+const platformChrome = require('./platform-chrome');
 const { TabManager } = require('./tab-manager');
 const layoutEngine = require('./layout');
 const paths = require('../util/paths');
@@ -25,22 +26,6 @@ const { createLogger } = require('../util/logger');
 const log = createLogger('window');
 
 /** Native window-control strategy per platform (spec §2). */
-function titleBarOptions(accentBg, symbolColor) {
-  if (process.platform === 'darwin') {
-    // Real traffic lights, inset to line up with the sidebar's first row.
-    return { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } };
-  }
-  if (process.platform === 'win32') {
-    // Native minimise/maximise/close drawn by the OS over our chrome, so
-    // Snap Layouts and the system context menu keep working.
-    return {
-      titleBarStyle: 'hidden',
-      titleBarOverlay: { color: accentBg, symbolColor, height: 44 },
-    };
-  }
-  // Linux: no overlay API, so the chrome draws its own controls.
-  return { frame: false };
-}
 
 class AetherWindow extends EventEmitter {
   /**
@@ -71,22 +56,70 @@ class AetherWindow extends EventEmitter {
   // ---- construction ----------------------------------------------------
 
   _createWindow(opts) {
-    const isDark = nativeTheme.shouldUseDarkColors;
-    const bg = this.incognito ? '#1B1230' : isDark ? '#14161A' : '#F6F7F9';
-    const symbol = isDark || this.incognito ? '#E8EAED' : '#202124';
-
     const bounds = opts.bounds || this._defaultBounds();
+    const colors = this._chromeColors();
 
     this.win = new BaseWindow({
       ...bounds,
       minWidth: 480,
       minHeight: 360,
-      backgroundColor: bg,
       show: false,
       title: this.incognito ? 'Aether — Private' : 'Aether',
-      ...titleBarOptions(bg, symbol),
+      ...platformChrome.windowOptions(colors, {
+        // An app-mode (PWA) window keeps its native frame, and a framed
+        // window cannot host a backdrop material.
+        transparentBackdrop: !this.appMode,
+      }),
       ...(this.appMode ? { frame: true, titleBarStyle: 'default' } : {}),
     });
+  }
+
+  /** The colours the OS should paint its own controls in, right now. */
+  _chromeColors() {
+    const appearance = this.deps.modes
+      ? this.deps.modes.appearanceFor()
+      : this.deps.settings.get('appearance');
+
+    return platformChrome.chromeColors({
+      dark: platformChrome.isDark(appearance?.theme),
+      incognito: this.incognito,
+      mode: this.deps.modes?.activeId(),
+      accent: appearance?.accent,
+    });
+  }
+
+  /**
+   * Re-tint the native window controls.
+   *
+   * Called on every theme and mode change. Without it the system buttons keep
+   * whatever colour they were created with, so switching to a dark mode
+   * leaves three light-grey buttons in a pale rectangle at the top-right of a
+   * dark window — the seam that makes an app look assembled rather than
+   * built.
+   */
+  refreshChrome() {
+    const info = this.chromeInfo();
+    platformChrome.applyColors(this.win, info);
+    // The renderer needs to know too: on Windows the overlay occupies real
+    // estate the chrome must not draw into.
+    this.send('window:chrome', info);
+    return info;
+  }
+
+  /**
+   * Everything the renderer needs to lay out around the native chrome.
+   *
+   * Sent on every change *and* included in the bootstrap payload, because a
+   * renderer that only listened for the event would paint one frame with the
+   * toolbar underneath the window buttons before the first change arrived.
+   */
+  chromeInfo() {
+    return {
+      ...this._chromeColors(),
+      overlayWidth: platformChrome.overlayWidth(),
+      backdrop: platformChrome.backdropFor({ transparentBackdrop: !this.appMode }),
+      platform: process.platform,
+    };
   }
 
   _defaultBounds() {

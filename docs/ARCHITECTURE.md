@@ -125,6 +125,42 @@ is a structural property here, not a thing to be careful about.
 
 ---
 
+## Native window chrome
+
+`src/main/window/platform-chrome.js` owns everything the *operating system*
+paints around the window. It is separate from the renderer's theming because
+the renderer's CSS never touches these pixels — the system does.
+
+On Windows the window is frameless but keeps the real system buttons via
+`titleBarOverlay`, which is what keeps Snap Layouts (hover maximise), the
+Alt-Space menu and double-click-to-maximise working. Drawing our own three
+buttons would lose all of that.
+
+The trap is that **`titleBarOverlay` is a construction option**. Set once at
+window creation, it never moves again: a window created in a light theme keeps
+light system buttons forever, so switching to Gamer Mode leaves three pale
+buttons in a pale rectangle at the corner of a dark window. `refreshChrome()`
+re-applies it, and `bootstrap.js` calls it from all three things that can move
+the theme — a mode change, an `appearance.*` setting, and `nativeTheme`
+updating when the OS itself changes at dusk.
+
+The renderer gets the same numbers, on `window:chrome` **and** in the
+`shell.bootstrap` payload. Both, deliberately: a renderer that only listened
+for the event would paint its first frame with the toolbar's trailing controls
+underneath the system buttons — which are real OS chrome painted above the
+page, so those controls are not merely misplaced, they are unclickable.
+
+Two consequences worth keeping in mind when editing the chrome CSS:
+
+- A drag region swallows clicks. `#toolbar` is `-webkit-app-region: drag` so a
+  frameless window can be moved at all, and everything interactive inside it
+  opts back out by *element type* rather than an opt-in class — a button that
+  forgets an opt-in class is dead, not slightly wrong, and the failure is
+  invisible on macOS and Linux where the whole rule set is inert.
+- Mica needs the window's background to be transparent **and** our own
+  surfaces to be translucent. An opaque toolbar over a Mica window shows no
+  material at all, so the effect looks broken rather than subtle.
+
 ## Three problems worth explaining
 
 ### `webRequest` allows one listener per event

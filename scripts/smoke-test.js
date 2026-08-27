@@ -614,6 +614,58 @@ app.whenReady().then(async () => {
     return 'programmer + gamer features in one mode';
   });
 
+  await check('native window chrome is described and re-tinted on a mode change', () => {
+    const before = win.chromeInfo();
+    assert(before.background && before.symbol,
+      'the bootstrap payload must carry chrome colours, or the first frame '
+      + 'paints the toolbar underneath the system window buttons');
+    assert(before.platform === process.platform);
+    // Only Windows has an overlay to reserve room for; padding elsewhere is
+    // a visible strip of dead space at the end of the toolbar.
+    assert(before.overlayWidth === (process.platform === 'win32' ? 140 : 0),
+      `overlay width ${before.overlayWidth} is wrong for ${process.platform}`);
+
+    // The actual defect this guards: `titleBarOverlay` is a *construction*
+    // option, so without an explicit re-apply a window created in a light
+    // theme keeps light system buttons forever.
+    container.modes.activate('ghost');
+    const during = win.refreshChrome();
+    assert(during.background !== before.background,
+      'the native chrome did not follow the mode — three pale buttons would '
+      + 'be left in a pale rectangle on a dark window');
+    assert(during.dark === true, 'Ghost Mode chrome must be dark');
+
+    container.modes.activate('default');
+    const after = win.refreshChrome();
+    assert(after.background === before.background, 'the chrome did not come back');
+    return `${before.background} -> ${during.background} -> ${after.background}`;
+  });
+
+  await check('the shell renderer adopts the native chrome measurements', async () => {
+    // The renderer half of the same contract. `--overlay-w` reserves the
+    // strip Windows paints its buttons into; if it is unset the omnibox's
+    // trailing controls sit under real OS chrome and cannot be clicked.
+    const applied = await win.shellView.webContents.executeJavaScript(`
+      (() => {
+        const root = document.documentElement;
+        return {
+          overlay: getComputedStyle(root).getPropertyValue('--overlay-w').trim(),
+          backdrop: root.dataset.backdrop || 'none',
+          platform: root.dataset.platform,
+        };
+      })()
+    `);
+    assert(applied.platform === process.platform,
+      'the renderer does not know its platform, so none of the chrome CSS applies');
+    assert(applied.overlay === `${win.chromeInfo().overlayWidth}px`,
+      `renderer reserved "${applied.overlay}" but the window reports `
+      + `${win.chromeInfo().overlayWidth}px`);
+    assert(applied.backdrop === win.chromeInfo().backdrop,
+      'the renderer disagrees with the window about its backdrop material, so '
+      + 'its surfaces will be opaque over a translucent window (or the reverse)');
+    return `--overlay-w: ${applied.overlay}, backdrop: ${applied.backdrop}`;
+  });
+
   await check('the content preload survives and exposes its bridge', async () => {
     // The failure this guards against is quiet and total: one uncaught throw
     // anywhere in the preload aborts the whole script, so `window.aether`

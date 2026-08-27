@@ -1226,3 +1226,49 @@
   font-size: 10px;
   color: var(--text-tertiary);
 }
+
+/* ===========================================================================
+   Windows: the title-bar overlay
+   ===========================================================================
+   The system draws the real minimise/maximise/close buttons over our chrome —
+   which is what keeps Snap Layouts, the Alt-Space menu and double-click-to-
+   maximise working. The cost is that it owns a rectangle at the top-right,
+   and anything we draw underneath is simply covered.
+*/
+
+:root[data-platform="win32"] .window-controls { display: none; }
+
+/* Reserve the overlay's width so the last toolbar button is not sitting
+   underneath the close button. Set from the main process, which is the only
+   side that knows the real overlay size. */
+:root[data-platform="win32"] #toolbar {
+  padding-right: calc(var(--overlay-w, 140px) + 4px);
+}
+
+/* The whole top strip must stay draggable, or a frameless window can only be
+   moved by its 4px border.
+
+   Everything interactive opts back out. This is deliberately a blanket rule
+   over element types rather than an opt-in class: a drag region swallows
+   clicks entirely, so a button that forgets the class is not slightly wrong,
+   it is dead — and that failure is invisible on macOS and Linux, where the
+   whole rule set is inert. */
+:root[data-platform="win32"] #toolbar,
+:root[data-platform="darwin"] #toolbar { -webkit-app-region: drag; }
+:root[data-platform="win32"] #toolbar :is(button, input, a, select, [role="button"], [tabindex], .no-drag),
+:root[data-platform="darwin"] #toolbar :is(button, input, a, select, [role="button"], [tabindex], .no-drag) {
+  -webkit-app-region: no-drag;
+}
+
+/* Mica shows through wherever we do not paint, so the surfaces that should
+   feel like part of the window get a translucent backing instead of a solid
+   one. The content area stays fully opaque — a see-through web page would be
+   unreadable, and that is not what the material is for. */
+:root[data-platform="win32"][data-backdrop="mica"] #sidebar,
+:root[data-platform="win32"][data-backdrop="mica"] #toolbar {
+  background: color-mix(in oklab, var(--bg) 72%, transparent);
+}
+
+/* Windows 11 rounds the window itself; rounding our own corners on top would
+   produce a double curve with a sliver of desktop between them. */
+:root[data-platform="win32"] #shell { border-radius: 0; }

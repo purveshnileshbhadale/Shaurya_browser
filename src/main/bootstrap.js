@@ -254,6 +254,11 @@ async function bootstrap() {
 
   container.modes.on('changed', (snapshot) => {
     applyTheme(container);
+    // Re-tint the *native* window controls. `titleBarOverlay` is a
+    // construction option on Windows, so without this a window created in
+    // light mode keeps light system buttons forever — three pale buttons in
+    // a pale rectangle at the corner of a dark window.
+    for (const win of container.windowManager.list()) win.refreshChrome();
     // Arm or release the mode's background work. Doing this from the mode
     // event rather than from each service means a new mode gets correct
     // lifecycle behaviour without touching any of them.
@@ -269,13 +274,19 @@ async function bootstrap() {
   // ---- theming ---------------------------------------------------------
   applyTheme(container);
   container.settings.on('changed', ({ path }) => {
-    if (path.startsWith('appearance.')) applyTheme(container);
+    if (path.startsWith('appearance.')) {
+      applyTheme(container);
+      for (const win of container.windowManager.list()) win.refreshChrome();
+    }
     container.windowManager.broadcast('settings:changed', {
       path, value: container.settings.get(path === '*' ? null : path),
     });
   });
   nativeTheme.on('updated', () => {
     container.windowManager.broadcast('settings:changed', { path: 'appearance.theme', value: container.settings.get('appearance.theme') });
+    // The OS theme moved under us — most often because the user is on the
+    // "system" setting and dusk arrived. The native controls have to follow.
+    for (const win of container.windowManager.list()) win.refreshChrome();
   });
 
   container.shutdown = () => shutdown(container);

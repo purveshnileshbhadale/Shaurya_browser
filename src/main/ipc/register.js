@@ -38,6 +38,7 @@ function registerHandlers(c) {
       window: w?.state() ?? null,
       tabs: w?.tabs.snapshot() ?? null,
       layout: w ? layoutEngine.chromeMetrics(w.layout) : null,
+      chrome: w?.chromeInfo() ?? null,
       settings: c.settings.get(),
       features: c.features.list(),
       footprint: c.features.footprint(),

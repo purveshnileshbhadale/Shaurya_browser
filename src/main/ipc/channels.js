@@ -189,7 +189,7 @@ const EVENTS = [
   'recorder:state', 'recorder:clip',
   'stream:changed', 'games:changed', 'deals:changed',
   'creator:changed', 'student:changed', 'student:timer', 'ghost:changed',
-  'media:changed',
+  'media:changed', 'window:chrome',
   'devtools:changed', 'terminal:data',
   'adblock:count', 'adblock:lists',
   'permissions:prompt', 'permissions:changed',

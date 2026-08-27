@@ -44,6 +44,11 @@ export const state = {
   toast: null,
   version: null,
   onboarding: null,
+  // What the *operating system* is drawing around us: the native window
+  // buttons' colours, how much room they take, and which backdrop material
+  // the window got. Supplied by the main process because only it can see
+  // them — the renderer's CSS never paints these pixels.
+  chrome: null,
 
   // --- modes (spec §2) and the mode-scoped services --------------------
   modes: {
@@ -183,6 +188,9 @@ export async function boot() {
   set('adblock', initial.adblock);
   set('version', initial.version);
   set('onboarding', initial.onboarding);
+  // Before the first paint, so the toolbar never renders one frame with its
+  // controls underneath the system's window buttons.
+  if (initial.chrome) applyChrome(initial.chrome);
   // Seeded before the first applyTheme() below, so the window paints in the
   // active mode's chrome rather than flashing Default and correcting itself.
   if (initial.modes) set('modes', initial.modes);
@@ -249,6 +257,7 @@ function wireEvents() {
   on('ghost:changed', (s) => update('ghost', (g) => ({ ...g, ...s })));
   on('devtools:changed', (s) => update('devtools', (d) => ({ ...d, ...s })));
   on('media:changed', (s) => set('media', s));
+  on('window:chrome', (info) => applyChrome(info));
   on('profiles:changed', (profiles) => set('profiles', profiles));
 
   on('adblock:count', (stats) => set('adblock', stats));
@@ -347,6 +356,27 @@ export function applyTheme() {
   if (appearance.roundedCorners != null) {
     root.style.setProperty('--radius', `${appearance.roundedCorners}px`);
   }
+}
+
+/**
+ * Adopt the native chrome the OS gave this window.
+ *
+ * Two things have to be right or the seam shows:
+ *
+ * - **`--overlay-w`** reserves the strip Windows draws its own minimise/
+ *   maximise/close into. Without it the omnibox's trailing buttons sit
+ *   underneath three system buttons and cannot be clicked — they are real
+ *   OS chrome, painted above the page.
+ * - **`data-backdrop`** tells our surfaces to go translucent. A Mica window
+ *   whose toolbar is opaque shows no material at all, so the option looks
+ *   broken rather than subtle.
+ */
+export function applyChrome(info) {
+  set('chrome', info);
+  const root = document.documentElement;
+  root.style.setProperty('--overlay-w', `${info.overlayWidth || 0}px`);
+  if (info.backdrop && info.backdrop !== 'none') root.dataset.backdrop = info.backdrop;
+  else delete root.dataset.backdrop;
 }
 
 /** Pick black or white for text on a background, by relative luminance. */
