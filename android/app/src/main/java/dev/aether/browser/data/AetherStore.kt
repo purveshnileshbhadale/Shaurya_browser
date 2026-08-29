@@ -38,6 +38,8 @@ data class Settings(
     val syncEndpoint: String = "",
     val vpnEnabled: Boolean = false,
     val restoreTabs: Boolean = true,
+    /** Sites the user has turned shields off for, by registrable domain. */
+    val shieldExceptions: List<String> = emptyList(),
 )
 
 @Serializable
@@ -68,6 +70,21 @@ data class Note(
 
 @Serializable
 data class SavedTab(val url: String, val title: String)
+
+/**
+ * Lifetime shield totals, for the new tab page.
+ *
+ * Counts only — every derived figure (data saved) is computed at render time
+ * from a constant that lives in `ui/Stats.kt` where it can be seen. Storing a
+ * pre-computed "bytes saved" would freeze today's estimate into the file and
+ * make it impossible to correct later.
+ */
+@Serializable
+data class ShieldStats(
+    val blocked: Long = 0,
+    val httpsUpgrades: Long = 0,
+    val since: Long = System.currentTimeMillis(),
+)
 
 class AetherStore(private val context: Context) {
 
@@ -186,6 +203,45 @@ class AetherStore(private val context: Context) {
         history.clear()
         save("history.json", emptyList<HistoryEntry>())
     }
+
+    // -----------------------------------------------------------------------
+    // Shield statistics
+    // -----------------------------------------------------------------------
+
+    var shieldStats: ShieldStats = load("shield-stats.json", ShieldStats())
+        private set
+
+    /**
+     * Add to the lifetime totals.
+     *
+     * Batched by the caller rather than written per blocked request: a single
+     * ad-heavy page load blocks dozens, and a file write per request would be
+     * a needless amount of IO on the hot path of every page.
+     */
+    fun addShieldStats(blocked: Long = 0, httpsUpgrades: Long = 0) {
+        if (blocked == 0L && httpsUpgrades == 0L) return
+        shieldStats = shieldStats.copy(
+            blocked = shieldStats.blocked + blocked,
+            httpsUpgrades = shieldStats.httpsUpgrades + httpsUpgrades,
+        )
+        save("shield-stats.json", shieldStats)
+    }
+
+    fun resetShieldStats() {
+        shieldStats = ShieldStats()
+        save("shield-stats.json", shieldStats)
+    }
+
+    /** Most-visited sites, for the new tab page's tiles. */
+    fun topSites(limit: Int = 8): List<HistoryEntry> = history
+        .filter { it.url.startsWith("http") }
+        // One tile per site, not per page: ten Guardian articles should be
+        // one "theguardian" tile, not ten identical ones.
+        .groupBy { it.url.substringAfter("://", it.url).substringBefore('/') }
+        .map { (_, entries) -> entries.maxByOrNull { it.visits }!! to entries.sumOf { it.visits } }
+        .sortedByDescending { it.second }
+        .take(limit)
+        .map { it.first }
 
     // -----------------------------------------------------------------------
     // Notes

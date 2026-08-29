@@ -50,6 +50,104 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
     private val _seedOnly = MutableStateFlow(false)
     val seedOnly: StateFlow<Boolean> = _seedOnly.asStateFlow()
 
+    // -- shield totals and saved pages, for the new tab page and the sheets --
+    // Held as flows so a bookmark added from the menu repaints the bottom bar
+    // and the new tab page without either of them polling the store.
+
+    private val _stats = MutableStateFlow(store.shieldStats)
+    val stats: StateFlow<dev.aether.browser.data.ShieldStats> = _stats.asStateFlow()
+
+    private val _bookmarks = MutableStateFlow(store.bookmarks.toList())
+    val bookmarks: StateFlow<List<dev.aether.browser.data.Bookmark>> = _bookmarks.asStateFlow()
+
+    private val _history = MutableStateFlow(store.history.toList())
+    val history: StateFlow<List<dev.aether.browser.data.HistoryEntry>> = _history.asStateFlow()
+
+    private val _settings = MutableStateFlow(store.settings)
+    val settings: StateFlow<dev.aether.browser.data.Settings> = _settings.asStateFlow()
+
+    /** Per-tab count of http:// URLs rewritten to https://. */
+    private val httpsUpgrades = HashMap<Long, Int>()
+
+    /**
+     * Fold the blocks and upgrades accumulated during a page load into the
+     * lifetime totals.
+     *
+     * Called at page-load boundaries rather than per event: the counters are
+     * cheap in memory and expensive on disk.
+     */
+    fun flushStats() {
+        val blocked = blocker.drainBlockedTotal()
+        val upgrades = synchronized(httpsUpgrades) {
+            val total = pendingUpgrades
+            pendingUpgrades = 0
+            total
+        }
+        if (blocked == 0L && upgrades == 0L) return
+        store.addShieldStats(blocked = blocked, httpsUpgrades = upgrades.toLong())
+        _stats.value = store.shieldStats
+    }
+
+    private var pendingUpgrades = 0
+
+    /** A request was rewritten from http:// to https://. */
+    fun recordHttpsUpgrade(tabId: Long) {
+        synchronized(httpsUpgrades) {
+            httpsUpgrades[tabId] = (httpsUpgrades[tabId] ?: 0) + 1
+            pendingUpgrades++
+        }
+    }
+
+    fun httpsUpgradesFor(tabId: Long): Int =
+        synchronized(httpsUpgrades) { httpsUpgrades[tabId] ?: 0 }
+
+    /** Most-visited sites for the new tab page. */
+    fun topSites(): List<dev.aether.browser.ui.TopSite> =
+        store.topSites().map { dev.aether.browser.ui.TopSite(it.url, it.title) }
+
+    // -- shields, per site --------------------------------------------------
+
+    fun shieldsOn(url: String?): Boolean {
+        val host = dev.aether.browser.adblock.FilterEngine.hostOf((url ?: "").lowercase())
+            ?: return true
+        return !blocker.isAllowed(host)
+    }
+
+    fun setShieldsOn(url: String?, on: Boolean) {
+        val host = dev.aether.browser.adblock.FilterEngine.hostOf((url ?: "").lowercase()) ?: return
+        blocker.setSiteEnabled(host, on)
+        updateSettings { it.copy(shieldExceptions = blocker.exceptions().toList()) }
+    }
+
+    // -- saved pages --------------------------------------------------------
+
+    fun isBookmarked(url: String?): Boolean = url != null && store.isBookmarked(url)
+
+    fun toggleBookmark(url: String, title: String): Boolean {
+        val existing = store.bookmarks.firstOrNull { it.url == url }
+        if (existing != null) store.removeBookmark(existing.id) else store.addBookmark(url, title)
+        _bookmarks.value = store.bookmarks.toList()
+        return existing == null
+    }
+
+    fun removeBookmark(id: String) {
+        store.removeBookmark(id)
+        _bookmarks.value = store.bookmarks.toList()
+    }
+
+    fun clearHistory() {
+        store.clearHistory()
+        _history.value = emptyList()
+    }
+
+    fun updateSettings(transform: (dev.aether.browser.data.Settings) -> dev.aether.browser.data.Settings) {
+        store.updateSettings(transform)
+        _settings.value = store.settings
+        // The blocker reads this at request time, so a change has to reach it
+        // rather than only the file.
+        blocker.enabled = store.settings.adblockEnabled
+    }
+
     private val _playingTabId = MutableStateFlow<Long?>(null)
     val playingTabId: StateFlow<Long?> = _playingTabId.asStateFlow()
 
@@ -90,6 +188,9 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
     init {
         blocker.enabled = store.settings.adblockEnabled
         blocker.onIndexChanged = { _seedOnly.value = blocker.usingSeed }
+        // "Shields off for this site" must survive a restart, or the setting
+        // is a gesture rather than a preference.
+        blocker.restoreExceptions(store.settings.shieldExceptions)
         viewModelScope.launch { blocker.initialise() }
         restoreOrOpenBlank()
     }
@@ -163,6 +264,9 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         blocker.resetCount(id)
         updateTab(id) { it.copy(url = url, title = title) }
         store.recordVisit(url, title, tab.incognito)
+        if (!tab.incognito) _history.value = store.history.toList()
+        // The page is done, so fold its blocks into the lifetime totals.
+        flushStats()
         persistSession()
     }
 

@@ -39,7 +39,13 @@ import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import dev.aether.browser.media.PlaybackService
 import dev.aether.browser.ui.AetherTheme
+import dev.aether.browser.ui.BookmarksSheet
+import dev.aether.browser.ui.HistorySheet
 import dev.aether.browser.ui.LocalReducedMotion
+import dev.aether.browser.ui.NewTabPage
+import dev.aether.browser.ui.SettingsSheet
+import dev.aether.browser.ui.ShieldsSheet
+import dev.aether.browser.ui.ShieldsState
 import dev.aether.browser.ui.isDarkTheme
 import kotlinx.coroutines.launch
 
@@ -288,16 +294,23 @@ class MainActivity : ComponentActivity() {
         val playingTitle by model.playingTitle.collectAsStateWithLifecycle()
         val playingArtist by model.playingArtist.collectAsStateWithLifecycle()
         val seedOnly by model.seedOnly.collectAsStateWithLifecycle()
+        val stats by model.stats.collectAsStateWithLifecycle()
+        val bookmarks by model.bookmarks.collectAsStateWithLifecycle()
+        val history by model.history.collectAsStateWithLifecycle()
+        val settings by model.settings.collectAsStateWithLifecycle()
         val scope = rememberCoroutineScope()
         val snackbar = remember { SnackbarHostState() }
         val reducedMotion = LocalReducedMotion.current
 
         var addressText by remember { mutableStateOf("") }
         var editingAddress by remember { mutableStateOf(false) }
+        var sheet by remember { mutableStateOf<Sheet?>(null) }
         var showTabs by remember { mutableStateOf(false) }
-        var showMenu by remember { mutableStateOf(false) }
 
         val active = tabs.firstOrNull { it.id == activeId }
+        val onNewTab = active == null || active.url == BrowserViewModel.HOME_URL
+        val shieldsOnHere = model.shieldsOn(active?.url)
+        val bookmarked = model.isBookmarked(active?.url)
 
         val nowPlaying = playingTabId?.let { id ->
             NowPlaying(
@@ -308,13 +321,15 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        // Hardware and gesture back: leave the switcher, then walk the page's
-        // history, and only then leave the app. Registering these as ordered
-        // handlers is also what makes the predictive-back animation show the
-        // right destination — the system needs to know something will consume
-        // the gesture before the finger lifts.
+        // Back closes what is on top, then walks the page's history, and only
+        // then leaves the app. Registering these as ordered handlers is also
+        // what lets predictive back animate the right destination.
         BackHandler(enabled = showTabs) { showTabs = false }
-        BackHandler(enabled = !showTabs && active?.canGoBack == true) {
+        BackHandler(enabled = !showTabs && editingAddress) {
+            editingAddress = false
+            addressText = active?.url.orEmpty()
+        }
+        BackHandler(enabled = !showTabs && !editingAddress && active?.canGoBack == true) {
             webViews[activeId]?.goBack()
         }
 
@@ -322,61 +337,95 @@ class MainActivity : ComponentActivity() {
             if (!editingAddress) addressText = active?.url.orEmpty()
         }
 
-        // The switcher covers the browser rather than sitting beside it, so
-        // the stacking is stated here rather than left to whatever the root
-        // layout happens to do with two full-size siblings.
         Box(Modifier.fillMaxSize()) {
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbar) },
-                bottomBar = {
-                    BottomBar(
+                topBar = {
+                    TopBar(
                         text = addressText,
                         editing = editingAddress,
                         tab = active,
                         tabCount = tabs.size,
-                        // From tab state, so the badge recomposes as the count changes.
                         blockedCount = active?.blockedCount ?: 0,
-                    seedOnly = seedOnly,
-                        suggestions = if (editingAddress) model.suggestions(addressText) else emptyList(),
-                        nowPlaying = nowPlaying,
+                        shieldsOnHere = shieldsOnHere,
+                        seedOnly = seedOnly,
                         onTextChange = { addressText = it },
                         onEditingChange = { editingAddress = it },
                         onGo = {
-                            val url = model.resolveInput(addressText)
-                            webViews[activeId]?.loadUrl(url)
+                            navigate(activeId, model.resolveInput(addressText))
                             editingAddress = false
                         },
-                        onBack = { webViews[activeId]?.goBack() },
-                        onForward = { webViews[activeId]?.goForward() },
                         onReload = {
                             if (active?.loading == true) webViews[activeId]?.stopLoading()
                             else webViews[activeId]?.reload()
                         },
+                        onShields = { sheet = Sheet.SHIELDS },
                         onTabs = {
-                            // Photograph the tab being left *before* the switcher
-                            // covers it: a WebView that is no longer composited
-                            // draws as a blank rectangle.
+                            // Photograph the tab being left *before* the
+                            // switcher covers it: a WebView that is no longer
+                            // composited draws as a blank rectangle.
                             captureThumbnail(activeId)
                             showTabs = true
                         },
-                        onMenu = { showMenu = true },
-                        onAssistant = { model.toggleAssistant() },
-                        onSuggestion = { url ->
-                            webViews[activeId]?.loadUrl(url)
-                            editingAddress = false
+                        onMenu = { sheet = Sheet.MENU },
+                    )
+                },
+                bottomBar = {
+                    BottomNav(
+                        tab = active,
+                        nowPlaying = nowPlaying,
+                        bookmarked = bookmarked,
+                        onBack = { webViews[activeId]?.goBack() },
+                        onForward = { webViews[activeId]?.goForward() },
+                        onNewTab = { model.newTab() },
+                        onBookmark = {
+                            val tab = active ?: return@BottomNav
+                            val added = model.toggleBookmark(tab.url, tab.title)
+                            scope.launch {
+                                snackbar.showSnackbar(if (added) "Bookmarked" else "Bookmark removed")
+                            }
                         },
+                        onHistory = { sheet = Sheet.HISTORY },
                         onPlayPause = { playingTabId?.let { evaluateMedia(it, "pause") } },
                         onOpenPlaying = { playingTabId?.let { model.activateTab(it) } },
                     )
                 }
             ) { padding ->
                 Box(Modifier.padding(padding).fillMaxSize()) {
+                    // A new tab shows the start page rather than about:blank.
+                    // The WebView stays composed underneath so its history and
+                    // scroll position survive; it is simply covered.
                     if (active != null) {
                         WebViewHost(tabId = active.id, initialUrl = active.url)
                     }
-                    // Only while a page is actually fetching. A bar that appears
-                    // at 0 and vanishes at 100 on every same-page anchor click is
-                    // a flicker, not information.
+
+                    if (onNewTab) {
+                        NewTabPage(
+                            blocked = stats.blocked,
+                            httpsUpgrades = stats.httpsUpgrades,
+                            topSites = remember(history) { model.topSites() },
+                            incognito = active?.incognito == true,
+                            onSearch = { editingAddress = true },
+                            onOpenSite = { navigate(activeId, it) },
+                            onBookmarks = { sheet = Sheet.BOOKMARKS },
+                            onHistory = { sheet = Sheet.HISTORY },
+                            onAssistant = { model.toggleAssistant() },
+                        )
+                    }
+
+                    // Suggestions overlay the page directly under the bar they
+                    // belong to, so what was typed and what is offered read as
+                    // one thing.
+                    if (editingAddress) {
+                        val suggestions = model.suggestions(addressText)
+                        if (suggestions.isNotEmpty()) {
+                            SuggestionList(suggestions) { url ->
+                                navigate(activeId, url)
+                                editingAddress = false
+                            }
+                        }
+                    }
+
                     AnimatedVisibility(
                         visible = active?.loading == true && active.progress in 1..99,
                         enter = fadeIn(tween(if (reducedMotion) 0 else 120)),
@@ -398,48 +447,60 @@ class MainActivity : ComponentActivity() {
                     activeId = activeId,
                     thumbnails = thumbnails,
                     onSelect = { model.activateTab(it); showTabs = false },
-                    onClose = { id ->
-                        thumbnails.remove(id)
-                        webViews.remove(id)?.destroy()
-                        model.closeTab(id)
-                    },
+                    onClose = { closeTab(it) },
                     onNew = { incognito ->
                         model.newTab(incognito = incognito)
                         showTabs = false
                     },
-                    onCloseAll = {
-                        // Tear the views down explicitly. `closeTab` only knows
-                        // about the model; a WebView left in the map would keep
-                        // its renderer process alive with nothing pointing at it.
-                        tabs.map { it.id }.forEach { id ->
-                            thumbnails.remove(id)
-                            webViews.remove(id)?.destroy()
-                            model.closeTab(id)
-                        }
-                        showTabs = false
+                    onCloseAll = { incognito ->
+                        tabs.filter { it.incognito == incognito }.map { it.id }.forEach { closeTab(it) }
                     },
                     onDismiss = { showTabs = false },
                 )
             }
         }
 
-        if (showMenu) {
-            MenuSheet(
+        when (sheet) {
+            Sheet.SHIELDS -> ShieldsSheet(
+                state = ShieldsState(
+                    host = hostOf(active?.url),
+                    enabledHere = shieldsOnHere,
+                    blockedHere = active?.blockedCount ?: 0,
+                    httpsUpgradesHere = model.httpsUpgradesFor(activeId),
+                    secure = active?.url?.startsWith("https://") == true,
+                    seedOnly = seedOnly,
+                ),
+                onToggleSite = { on ->
+                    model.setShieldsOn(active?.url, on)
+                    // The page has already loaded with the old policy, so the
+                    // switch only means anything after a reload. Doing it
+                    // automatically is the difference between a control that
+                    // works and one that appears not to.
+                    webViews[activeId]?.reload()
+                },
+                onOpenSettings = { sheet = Sheet.SETTINGS },
+                onDismiss = { sheet = null },
+            )
+
+            Sheet.MENU -> MenuSheet(
                 tab = active,
-                onDismiss = { showMenu = false },
+                bookmarked = bookmarked,
+                onDismiss = { sheet = null },
                 onBookmark = {
-                    active ?: return@MenuSheet
-                    model.store.addBookmark(active.url, active.title)
-                    scope.launch { snackbar.showSnackbar("Bookmarked") }
-                    showMenu = false
+                    val tab = active ?: return@MenuSheet
+                    val added = model.toggleBookmark(tab.url, tab.title)
+                    sheet = null
+                    scope.launch {
+                        snackbar.showSnackbar(if (added) "Bookmarked" else "Bookmark removed")
+                    }
                 },
                 onShare = {
-                    active ?: return@MenuSheet
-                    showMenu = false
-                    sharePage(active.url, active.title)
+                    val tab = active ?: return@MenuSheet
+                    sheet = null
+                    sharePage(tab.url, tab.title)
                 },
                 onNotes = {
-                    showMenu = false
+                    sheet = null
                     extractPageText(activeId) { text ->
                         if (text.isNullOrBlank()) {
                             scope.launch { snackbar.showSnackbar("Nothing readable on this page") }
@@ -453,9 +514,36 @@ class MainActivity : ComponentActivity() {
                 },
                 onIncognito = {
                     model.newTab(incognito = true)
-                    showMenu = false
+                    sheet = null
                 },
+                onHistory = { sheet = Sheet.HISTORY },
+                onSettings = { sheet = Sheet.SETTINGS },
             )
+
+            Sheet.HISTORY -> HistorySheet(
+                entries = history.sortedByDescending { it.lastVisit },
+                onOpen = { navigate(activeId, it); sheet = null },
+                onClear = {
+                    model.clearHistory()
+                    scope.launch { snackbar.showSnackbar("History cleared") }
+                },
+                onDismiss = { sheet = null },
+            )
+
+            Sheet.BOOKMARKS -> BookmarksSheet(
+                bookmarks = bookmarks,
+                onOpen = { navigate(activeId, it); sheet = null },
+                onRemove = { model.removeBookmark(it) },
+                onDismiss = { sheet = null },
+            )
+
+            Sheet.SETTINGS -> SettingsSheet(
+                settings = settings,
+                onChange = { transform -> model.updateSettings(transform) },
+                onDismiss = { sheet = null },
+            )
+
+            null -> Unit
         }
 
         if (assistant.open) {
@@ -472,6 +560,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Which bottom sheet is open. One at a time, by construction. */
+    private enum class Sheet { SHIELDS, MENU, HISTORY, BOOKMARKS, SETTINGS }
+
+    /**
+     * Load a URL in a tab.
+     *
+     * Goes through the WebView rather than the model so that history, the
+     * progress bar and the blocker's per-tab counter all see the navigation.
+     */
+    private fun navigate(tabId: Long, url: String) {
+        webViews[tabId]?.loadUrl(url) ?: model.newTab(url)
+    }
+
+    /** Close a tab and release the resources the model does not know about. */
+    private fun closeTab(id: Long) {
+        thumbnails.remove(id)
+        // The model only tracks state; a WebView left in the map would keep
+        // its renderer process alive with nothing pointing at it.
+        webViews.remove(id)?.destroy()
+        model.closeTab(id)
+    }
+
+    private fun hostOf(url: String?): String =
+        (url ?: "").substringAfter("://", "").substringBefore('/').removePrefix("www.")
+
     /** Hand the current page to whatever the user shares with. */
     private fun sharePage(url: String, title: String) {
         val share = Intent(Intent.ACTION_SEND).apply {
@@ -481,6 +594,7 @@ class MainActivity : ComponentActivity() {
         }
         startActivity(Intent.createChooser(share, null))
     }
+
 
 
     // -----------------------------------------------------------------------
@@ -580,6 +694,7 @@ class MainActivity : ComponentActivity() {
                 if (model.store.settings.httpsOnly && url.startsWith("http://") &&
                     !isLocalAddress(request.url.host)
                 ) {
+                    model.recordHttpsUpgrade(tabId)
                     webView.loadUrl(url.replaceFirst("http://", "https://"))
                     return true
                 }

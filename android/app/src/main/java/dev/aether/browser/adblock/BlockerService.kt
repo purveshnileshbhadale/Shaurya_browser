@@ -42,6 +42,19 @@ class BlockerService(private val context: Context) {
     /** Per-tab blocked counts, for the shield badge. */
     private val counts = HashMap<Long, Int>()
 
+    /**
+     * Blocks not yet added to the lifetime total on disk.
+     *
+     * Accumulated here and drained by the caller at page-load boundaries. A
+     * file write per blocked request would put disk IO on the hot path of
+     * every subresource on an ad-heavy page, for a number nobody reads more
+     * than once a session.
+     */
+    private val pendingTotal = java.util.concurrent.atomic.AtomicLong(0)
+
+    /** Take the blocks accumulated since the last call, and reset. */
+    fun drainBlockedTotal(): Long = pendingTotal.getAndSet(0)
+
     @Volatile
     var enabled: Boolean = true
 
@@ -203,6 +216,7 @@ class BlockerService(private val context: Context) {
         if (!verdict.block) return null
 
         synchronized(counts) { counts[tabId] = (counts[tabId] ?: 0) + 1 }
+        pendingTotal.incrementAndGet()
 
         // An empty 200 rather than an error: some sites break visibly on a
         // failed request but tolerate an empty one, and this is what desktop
@@ -255,6 +269,17 @@ class BlockerService(private val context: Context) {
     }
 
     fun isAllowed(host: String): Boolean = FilterEngine.baseDomain(host) in siteExceptions
+
+    /** Every site the user has turned protection off for. */
+    fun exceptions(): Set<String> = synchronized(siteExceptions) { siteExceptions.toSet() }
+
+    /** Restore exceptions saved from a previous run. */
+    fun restoreExceptions(hosts: Collection<String>) {
+        synchronized(siteExceptions) {
+            siteExceptions.clear()
+            siteExceptions.addAll(hosts)
+        }
+    }
 
     fun setSiteEnabled(host: String, blockingEnabled: Boolean) {
         val key = FilterEngine.baseDomain(host)
