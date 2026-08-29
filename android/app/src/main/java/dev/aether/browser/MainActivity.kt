@@ -287,6 +287,7 @@ class MainActivity : ComponentActivity() {
         val playingTabId by model.playingTabId.collectAsStateWithLifecycle()
         val playingTitle by model.playingTitle.collectAsStateWithLifecycle()
         val playingArtist by model.playingArtist.collectAsStateWithLifecycle()
+        val seedOnly by model.seedOnly.collectAsStateWithLifecycle()
         val scope = rememberCoroutineScope()
         val snackbar = remember { SnackbarHostState() }
         val reducedMotion = LocalReducedMotion.current
@@ -335,6 +336,7 @@ class MainActivity : ComponentActivity() {
                         tabCount = tabs.size,
                         // From tab state, so the badge recomposes as the count changes.
                         blockedCount = active?.blockedCount ?: 0,
+                    seedOnly = seedOnly,
                         suggestions = if (editingAddress) model.suggestions(addressText) else emptyList(),
                         nowPlaying = nowPlaying,
                         onTextChange = { addressText = it },

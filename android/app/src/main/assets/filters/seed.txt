@@ -1,0 +1,99 @@
+[Adblock Plus 2.0]
+! Title: Aether seed list
+! Description: A small, bundled starter list.
+!
+! This exists so that a fresh install is not defenceless. The real
+! protection comes from EasyList, EasyPrivacy and the uBlock lists, which
+! are ~112,000 rules downloaded on first run — this is about sixty, and it
+! is deliberately not a substitute for them.
+!
+! It covers only the largest and least ambiguous ad and tracking endpoints,
+! the ones present on a large share of the web. Every rule here is a domain
+! anchor on a host that exists to serve ads or collect analytics, so the
+! false-positive risk of shipping them unconditionally is close to nil.
+!
+! Kept short on purpose: it is parsed on every cold start before anything
+! else is available, and a long bundled list would both slow that down and
+! rot faster than it could be updated.
+
+! ---- ad serving ---------------------------------------------------------
+||doubleclick.net^
+||googlesyndication.com^
+||googleadservices.com^
+||adservice.google.com^
+||adnxs.com^
+||adsrvr.org^
+||rubiconproject.com^
+||pubmatic.com^
+||openx.net^
+||criteo.com^
+||criteo.net^
+||taboola.com^
+||outbrain.com^
+||sharethrough.com^
+||smartadserver.com^
+||casalemedia.com^
+||33across.com^
+||indexww.com^
+||media.net^
+||amazon-adsystem.com^
+||adcolony.com^
+||applovin.com^
+||unityads.unity3d.com^
+||moatads.com^
+||teads.tv^
+||sonobi.com^
+||districtm.io^
+||bidswitch.net^
+||yieldmo.com^
+||triplelift.com^
+
+! ---- analytics and tracking --------------------------------------------
+||google-analytics.com^
+||analytics.google.com^
+||googletagservices.com^
+||scorecardresearch.com^
+||quantserve.com^
+||quantcount.com^
+||chartbeat.com^
+||chartbeat.net^
+||newrelic.com^$third-party
+||nr-data.net^
+||segment.io^
+||segment.com^$third-party
+||mixpanel.com^$third-party
+||amplitude.com^$third-party
+||fullstory.com^
+||hotjar.com^
+||hotjar.io^
+||mouseflow.com^
+||crazyegg.com^
+||inspectlet.com^
+||luckyorange.com^
+||clarity.ms^
+||branch.io^$third-party
+||appsflyer.com^
+||adjust.com^$third-party
+||kochava.com^
+||bugsnag.com^$third-party
+
+! ---- social tracking pixels --------------------------------------------
+||connect.facebook.net^$third-party
+||facebook.com/tr$third-party
+||analytics.tiktok.com^
+||ads.linkedin.com^
+||px.ads.linkedin.com^
+||ads-twitter.com^
+||analytics.twitter.com^
+||static.ads-twitter.com^
+||bat.bing.com^
+||ads.pinterest.com^
+||sc-static.net^$third-party
+||snap.licdn.com^
+
+! ---- generic paths ------------------------------------------------------
+! Scoped tightly. A bare /ads/ rule would break sites whose own content
+! lives under that path, so these require an ad-shaped filename too.
+||*/adsbygoogle.js
+||*/gpt.js$script,third-party
+||*/prebid*.js$script

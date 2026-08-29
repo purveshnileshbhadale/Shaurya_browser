@@ -21,7 +21,23 @@ import java.net.URL
  */
 class BlockerService(private val context: Context) {
 
-    val engine = FilterEngine()
+    /**
+     * The live index.
+     *
+     * `@Volatile` and replaced wholesale rather than mutated: `intercept`
+     * runs on WebView's IO thread for every subresource, so a rebuild that
+     * cleared this one in place would leave a window — hundreds of
+     * milliseconds, with a hundred thousand rules to parse — in which every
+     * request on every tab sailed through an empty index.
+     */
+    @Volatile
+    var engine = FilterEngine()
+        private set
+
+    /** True while the only rules loaded are the ones bundled with the app. */
+    @Volatile
+    var usingSeed: Boolean = false
+        private set
 
     /** Per-tab blocked counts, for the shield badge. */
     private val counts = HashMap<Long, Int>()
@@ -36,6 +52,16 @@ class BlockerService(private val context: Context) {
     /** Hosts the user turned blocking off for. */
     private val siteExceptions = HashSet<String>()
 
+    /**
+     * Called whenever the index is replaced.
+     *
+     * The UI needs to know when protection goes from "seed only" to real
+     * lists, and that transition happens on a background thread minutes
+     * after launch — too late for anything that read the flag once at
+     * startup.
+     */
+    var onIndexChanged: (() -> Unit)? = null
+
     private val cacheDir: File
         get() = File(context.filesDir, "filters").apply { mkdirs() }
 
@@ -46,21 +72,37 @@ class BlockerService(private val context: Context) {
      * launch rather than after a download.
      */
     suspend fun initialise() = withContext(Dispatchers.IO) {
-        var loaded = 0
-        for (list in DEFAULT_LISTS) {
-            val file = File(cacheDir, "${list.id}.txt")
-            if (file.exists()) {
-                runCatching { engine.addList(file.readText()) }
-                    .onSuccess { loaded++ }
-                    .onFailure { Log.w(TAG, "could not parse ${list.id}: ${it.message}") }
-            }
-        }
+        rebuild()
         ready = true
-        Log.i(TAG, "loaded $loaded cached list(s): ${engine.networkRuleCount} rules")
 
         val newest = DEFAULT_LISTS.maxOfOrNull { File(cacheDir, "${it.id}.txt").lastModified() } ?: 0
-        if (System.currentTimeMillis() - newest > UPDATE_INTERVAL_MS) {
-            updateLists()
+        val stale = System.currentTimeMillis() - newest > UPDATE_INTERVAL_MS
+
+        // Refresh when the lists are stale *or* when nothing has ever
+        // downloaded. Without the second condition a first launch with no
+        // signal — a phone on the underground, a captive wifi portal —
+        // leaves the browser running on the seed for the whole session with
+        // no further attempt.
+        if (stale || usingSeed) retryUntilFetched()
+    }
+
+    /**
+     * Keep trying to acquire the lists, backing off as it fails.
+     *
+     * A browser is opened far more often than it is left running, and the
+     * failure that matters is the launch where the network was not up yet.
+     * Waiting for the next twelve-hourly tick means a whole session
+     * unprotected; a handful of retries costs nothing and usually succeeds
+     * on the second.
+     */
+    private suspend fun retryUntilFetched() {
+        var delayMs = RETRY_BASE_MS
+        repeat(RETRY_ATTEMPTS) { attempt ->
+            if (updateLists() > 0) return
+            if (attempt == RETRY_ATTEMPTS - 1) return
+            Log.i(TAG, "no list downloaded; retrying in ${delayMs / 1000}s")
+            kotlinx.coroutines.delay(delayMs)
+            delayMs = (delayMs * 2).coerceAtMost(RETRY_MAX_MS)
         }
     }
 
@@ -87,13 +129,35 @@ class BlockerService(private val context: Context) {
         updated
     }
 
+
     private fun rebuild() {
-        engine.clear()
+        val next = FilterEngine()
+        var loaded = 0
         for (list in DEFAULT_LISTS) {
             val file = File(cacheDir, "${list.id}.txt")
-            if (file.exists()) runCatching { engine.addList(file.readText()) }
+            if (!file.exists()) continue
+            runCatching { next.addList(file.readText()) }
+                .onSuccess { loaded++ }
+                .onFailure { Log.w(TAG, "could not parse ${list.id}: ${it.message}") }
         }
-        Log.i(TAG, "index rebuilt: ${engine.networkRuleCount} rules")
+
+        // Nothing cached: a fresh install, or one that has never had a
+        // network. The bundled seed keeps the largest trackers blocked
+        // instead of leaving the browser wide open while it looks fine.
+        val seeded = loaded == 0
+        if (seeded) {
+            runCatching { next.addList(context.assets.open(SEED_ASSET).bufferedReader().readText()) }
+                .onFailure { Log.e(TAG, "bundled seed list unreadable: ${it.message}") }
+        }
+
+        usingSeed = seeded
+        engine = next
+        onIndexChanged?.invoke()
+        Log.i(
+            TAG,
+            "index rebuilt from $loaded list(s): ${next.networkRuleCount} rules"
+                + if (seeded) " (bundled seed only)" else ""
+        )
     }
 
     private fun download(url: String): String {
@@ -207,6 +271,21 @@ class BlockerService(private val context: Context) {
     companion object {
         private const val TAG = "AetherBlocker"
         private const val UPDATE_INTERVAL_MS = 12L * 60 * 60 * 1000
+
+        /** Bundled starter rules, for before anything has downloaded. */
+        private const val SEED_ASSET = "filters/seed.txt"
+
+        /**
+         * In-session retries after a failed download.
+         *
+         * Four attempts over roughly two minutes: long enough to cover a
+         * phone that has not finished associating with wifi, short enough
+         * that it is over before anyone has finished reading a page, and
+         * bounded so a genuinely offline device stops burning radio.
+         */
+        private const val RETRY_ATTEMPTS = 4
+        private const val RETRY_BASE_MS = 15_000L
+        private const val RETRY_MAX_MS = 60_000L
 
         /**
          * The same subscriptions the desktop build uses, each with mirrors.

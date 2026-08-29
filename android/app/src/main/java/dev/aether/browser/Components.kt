@@ -105,6 +105,7 @@ fun BottomBar(
     tab: BrowserViewModel.Tab?,
     tabCount: Int,
     blockedCount: Int,
+    seedOnly: Boolean,
     suggestions: List<BrowserViewModel.Suggestion>,
     nowPlaying: NowPlaying?,
     onTextChange: (String) -> Unit,
@@ -179,6 +180,7 @@ fun BottomBar(
                 editing = editing,
                 tab = tab,
                 blockedCount = blockedCount,
+                seedOnly = seedOnly,
                 onTextChange = onTextChange,
                 onEditingChange = onEditingChange,
                 onGo = onGo,
@@ -227,6 +229,7 @@ private fun Omnibox(
     editing: Boolean,
     tab: BrowserViewModel.Tab?,
     blockedCount: Int,
+    seedOnly: Boolean,
     onTextChange: (String) -> Unit,
     onEditingChange: (Boolean) -> Unit,
     onGo: () -> Unit,
@@ -245,7 +248,16 @@ private fun Omnibox(
         ) {
             // The shield doubles as the blocked-count badge: one glyph
             // carrying both "this page is protected" and "by how much".
-            if (blockedCount > 0 && !editing) {
+            if (seedOnly && !editing) {
+                // Filter lists have not downloaded. A plain "0 blocked"
+                // would read as "this page is clean", which is the opposite
+                // of what is happening, so the shield says so instead.
+                Icon(
+                    Icons.Filled.Shield,
+                    contentDescription = "Limited protection — filter lists have not downloaded",
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            } else if (blockedCount > 0 && !editing) {
                 BadgedBox(badge = { Badge { Text("$blockedCount") } }) {
                     Icon(
                         Icons.Filled.Shield,

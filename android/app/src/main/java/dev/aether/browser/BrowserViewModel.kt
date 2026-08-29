@@ -40,6 +40,16 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
     // whether backgrounding should pause the WebViews or hold a foreground
     // service.
 
+    /**
+     * True while the blocker is running on the bundled seed list alone.
+     *
+     * Surfaced because "nothing was blocked" and "nothing is loaded to block
+     * with" look identical on a shield reading zero, and only one of them
+     * means the page is clean.
+     */
+    private val _seedOnly = MutableStateFlow(false)
+    val seedOnly: StateFlow<Boolean> = _seedOnly.asStateFlow()
+
     private val _playingTabId = MutableStateFlow<Long?>(null)
     val playingTabId: StateFlow<Long?> = _playingTabId.asStateFlow()
 
@@ -79,6 +89,7 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         blocker.enabled = store.settings.adblockEnabled
+        blocker.onIndexChanged = { _seedOnly.value = blocker.usingSeed }
         viewModelScope.launch { blocker.initialise() }
         restoreOrOpenBlank()
     }

@@ -335,6 +335,16 @@ export function createToolbar({ container }) {
     badge.style.display = count > 0 ? 'grid' : 'none';
     badge.textContent = count > 99 ? '99+' : String(count);
 
+    // Running on the bundled seed means the real subscriptions have never
+    // downloaded. A plain "0 blocked" would read as "this page is clean",
+    // which is the opposite of what is happening, so say so on the control
+    // the user would look at.
+    const degraded = Boolean(state.adblock?.seedOnly);
+    shield.classList.toggle('is-degraded', degraded);
+    shield.title = degraded
+      ? 'Limited protection — filter lists have not downloaded yet'
+      : `${count} tracker${count === 1 ? '' : 's'} blocked on this page`;
+
     readerBtn.style.display = selectors.feature('reader') ? '' : 'none';
     readerBtn.classList.toggle('is-active', Boolean(tab?.readerMode));
 

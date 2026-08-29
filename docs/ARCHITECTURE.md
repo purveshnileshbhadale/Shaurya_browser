@@ -225,6 +225,40 @@ correct if slower.
 Measured: 32k lines parsed in 57ms, 0.05% skipped, ~21µs per uncached match,
 32 MiB resident.
 
+#### Acquiring the lists is the part that breaks
+
+A correct matcher blocks nothing if the rules never arrived, and the symptom
+is invisible from the inside: a shield reading zero looks exactly like a clean
+page. Three rules keep that from happening, each of which was a real bug:
+
+- **A failed update must not stamp the clock.** `updateLists()` used to set
+  `lastUpdate` whether or not anything downloaded, and `init()` skips the
+  refresh while that stamp looks recent. One failed first launch — offline, a
+  captive portal, a network that blocks the list hosts — bought twelve hours
+  of a browser that blocked nothing and reported no problem. Only a run that
+  fetched something counts, and a wholly failed run retries on a backoff
+  starting at 30 seconds.
+- **The index is swapped, never emptied.** `rebuild()` builds a new
+  `FilterEngine` and assigns it at the end. Clearing in place left a window —
+  a second or so, parsing 110k rules — where every request went unfiltered,
+  on every start and every scheduled update.
+- **A fresh install is not defenceless.** `assets/filters/seed.txt` is ~70
+  bundled rules covering the largest ad and tracking endpoints, loaded when no
+  subscription is cached. It is not a substitute for the real lists and does
+  not pretend to be: `usingSeed` is surfaced through `statsForTab`, and the
+  shield turns amber and says protection is limited rather than showing a
+  confident zero.
+
+The Android blocker has the same three properties, including the same bundled
+seed at `android/app/src/main/assets/filters/seed.txt`. It additionally retries
+within the session rather than waiting for the next launch, since a phone's
+first launch is the one most likely to have no signal yet.
+
+The smoke test now loads a page that references real ad hosts and asserts the
+requests are cancelled. It previously asserted only that the service was
+wired, with a comment excusing an empty index because CI might have no
+network — which is exactly the broken state, so it passed throughout.
+
 ### Vault
 
 scrypt (N=2¹⁷, ~128 MiB, ~250ms) for the KDF, AES-256-GCM for the sealed blob.

@@ -229,12 +229,57 @@ app.whenReady().then(async () => {
   // Privacy
   // =======================================================================
 
-  await check('ad blocking is attached and the engine is loaded', () => {
-    const stats = container.adblock.engine.stats;
+  await check('the blocker has rules even with no network', () => {
+    // This used to assert only that the service was wired, with a comment
+    // excusing an empty index because CI might not have a network. That is
+    // precisely the state a user experiences as "the ad blocker does not
+    // work", so it is now a failure rather than a footnote: the bundled seed
+    // means there is no legitimate reason for the index to be empty.
     assert(container.adblock.ready, 'the blocker never finished initialising');
-    // Lists may not have downloaded in a sandboxed CI network; the engine
-    // must still be wired either way.
-    return `${stats.network} block rules from ${stats.lists} list(s)`;
+    const stats = container.adblock.engine.stats;
+    assert(stats.network > 20,
+      `only ${stats.network} block rules loaded — a browser in this state `
+      + 'silently blocks nothing while its shield reads a confident zero');
+    return `${stats.network} block rules`
+      + (container.adblock.usingSeed ? ' (bundled seed — no download yet)' : '');
+  });
+
+  await check('a real page load has its trackers cancelled', async () => {
+    // The end-to-end claim, made the only way it can honestly be made: serve
+    // a page that references real ad hosts and confirm the requests never
+    // leave. Every layer below this can be correct while the browser blocks
+    // nothing, because the layers are joined by a page URL and a resource
+    // type that have to line up.
+    const server = require('node:http').createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end('<!doctype html><html><head><title>tracker probe</title></head><body>'
+        + '<script src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>'
+        + '<script src="https://www.google-analytics.com/analytics.js"></script>'
+        + '<img src="https://connect.facebook.net/en_US/fbevents.js">'
+        + '</body></html>');
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}/`;
+
+    try {
+      const tab = win.tabs.create({ url: origin });
+      await until(() => tab.webContents && !tab.webContents.isLoading(),
+        { label: 'the probe page to load' });
+      // The document finishing is not the subresources being attempted, so
+      // wait for the blocker rather than for the load.
+      await until(() => container.adblock.statsForTab(tab.webContents.id).count >= 3,
+        { label: 'the trackers to be cancelled' });
+
+      const stats = container.adblock.statsForTab(tab.webContents.id);
+      const hosts = stats.topHosts.map((h) => h.host);
+      assert(hosts.some((h) => h.includes('doubleclick')), `no doubleclick block: ${hosts}`);
+      assert(hosts.some((h) => h.includes('google-analytics')), `no analytics block: ${hosts}`);
+
+      win.tabs.close(tab.id);
+      return `${stats.count} cancelled: ${hosts.join(', ')}`;
+    } finally {
+      server.close();
+    }
   });
 
   await check('the web-request hub multiplexes every participant', () => {

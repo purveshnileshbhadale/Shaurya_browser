@@ -70,6 +70,10 @@ const DEFAULT_LISTS = [
 /** Refresh cadence for subscriptions. */
 const UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000; // twice daily, like uBlock
 
+/** First retry after a wholly failed update, then doubling up to the cap. */
+const RETRY_BASE_MS = 30 * 1000;
+const RETRY_MAX_MS = 30 * 60 * 1000;
+
 /** Requests Aether itself makes must never be filtered. */
 const INTERNAL_SCHEMES = new Set(['aether:', 'devtools:', 'chrome-extension:', 'blob:', 'data:', 'file:']);
 
@@ -100,6 +104,10 @@ class AdblockService extends EventEmitter {
     this.totals = this._totalsStore.data;
 
     this._updateTimer = null;
+    this._retryTimer = null;
+    this._retryDelay = 0;
+    /** True while the only rules loaded are the bundled seed. */
+    this.usingSeed = false;
   }
 
   /**
@@ -133,8 +141,12 @@ class AdblockService extends EventEmitter {
     await this.rebuild();
     this.ready = true;
 
+    // Refresh if the lists are stale *or* if we are running on the seed,
+    // which means no subscription has ever downloaded. The second condition
+    // is the one that matters: without it, a build whose stored timestamp
+    // looks recent will never try to acquire the lists it does not have.
     const age = Date.now() - (this.listStore.data.lastUpdate || 0);
-    if (age > UPDATE_INTERVAL_MS) {
+    if (age > UPDATE_INTERVAL_MS || this.usingSeed) {
       // Don't block startup on the network.
       this.updateLists().catch((err) => log.warn(`initial update failed: ${err.message}`));
     }
@@ -147,29 +159,53 @@ class AdblockService extends EventEmitter {
 
   dispose() {
     if (this._updateTimer) clearInterval(this._updateTimer);
+    if (this._retryTimer) clearTimeout(this._retryTimer);
     this._totalsStore.flush();
   }
 
-  /** Rebuild the index from whatever is cached on disk. */
+  /**
+   * Rebuild the index from whatever is cached on disk.
+   *
+   * The new index is built in a *separate* engine and swapped in at the end.
+   * Building in place would mean calling `clear()` and then spending a second
+   * or two parsing 110,000 rules, and every request arriving in that window
+   * would sail through an empty index — on every start, and again on every
+   * scheduled update. A blocker that stops blocking while it refreshes is
+   * worse than one that is merely stale.
+   */
   async rebuild() {
     const t0 = Date.now();
-    this.engine.clear();
+    const next = new FilterEngine();
     let loaded = 0;
+
     for (const list of this.listStore.data.lists) {
       if (!list.enabled) continue;
-      const file = path.join(paths.filtersDir(), `${list.id}.txt`);
-      let text;
-      try {
-        text = fs.readFileSync(file, 'utf8');
-      } catch {
-        continue; // Not downloaded yet; updateLists() will fetch it.
-      }
+      const text = this._readList(list.id);
+      if (text == null) continue; // Not downloaded yet; updateLists() will fetch it.
+
       const parsed = parseList(text);
-      this.engine.addParsedList(parsed);
+      next.addParsedList(parsed);
       list.rules = parsed.network.length + parsed.exceptions.length;
       list.cosmetic = parsed.cosmetic.length;
       loaded++;
     }
+
+    // Nothing cached yet — a fresh install, or a first run with no network.
+    // The bundled seed keeps the largest trackers blocked until the real
+    // lists arrive, rather than leaving the browser wide open.
+    this.usingSeed = loaded === 0;
+    if (this.usingSeed) {
+      const seed = this._readSeed();
+      if (seed) {
+        next.addParsedList(parseList(seed));
+        log.warn(
+          `no subscription is cached; running on the bundled seed list `
+          + `(${next.stats.network} rules). Real protection needs a download.`
+        );
+      }
+    }
+
+    this.engine = next;
     this.listStore.save();
     log.info(
       `index built from ${loaded} lists in ${Date.now() - t0}ms — ` +
@@ -177,6 +213,25 @@ class AdblockService extends EventEmitter {
       `${this.engine.stats.cosmetic} cosmetic rules`
     );
     this.emit('lists', this.lists());
+  }
+
+  /** A cached subscription's text, or null if it is not on disk. */
+  _readList(id) {
+    try {
+      return fs.readFileSync(path.join(paths.filtersDir(), `${id}.txt`), 'utf8');
+    } catch {
+      return null;
+    }
+  }
+
+  /** The list bundled with the app, for before anything has downloaded. */
+  _readSeed() {
+    try {
+      return fs.readFileSync(paths.appPath('assets', 'filters', 'seed.txt'), 'utf8');
+    } catch (err) {
+      log.error(`the bundled seed list is missing: ${err.message}`);
+      return null;
+    }
   }
 
   /**
@@ -229,10 +284,48 @@ class AdblockService extends EventEmitter {
         log.warn(`could not fetch ${list.id} — ${list.error}`);
       }
     }
-    this.listStore.data.lastUpdate = Date.now();
+
+    // Only a run that actually fetched something counts as an update.
+    //
+    // Stamping the clock unconditionally is the bug that turns a momentary
+    // network problem into a permanently inert blocker: `init()` skips the
+    // refresh while the stamp looks recent, so one failed first launch —
+    // offline, captive portal, a host the network blocks — buys twelve hours
+    // of a browser that silently blocks nothing and says it is fine.
+    const succeeded = results.filter((r) => r.ok).length;
+    if (succeeded > 0) {
+      this.listStore.data.lastUpdate = Date.now();
+      this._retryDelay = 0;
+    }
     this.listStore.save();
     await this.rebuild();
+
+    if (succeeded === 0 && results.length > 0) this._scheduleRetry();
     return results;
+  }
+
+  /**
+   * Try again soon after a wholly failed update, backing off as it keeps
+   * failing.
+   *
+   * The twelve-hour cadence is right for keeping current lists fresh and
+   * badly wrong for acquiring lists we do not have: the common case is a
+   * laptop opened before the wifi has associated, where the right answer is
+   * to retry in a minute, not tomorrow.
+   */
+  _scheduleRetry() {
+    if (this._retryTimer) return;
+    this._retryDelay = Math.min(
+      this._retryDelay ? this._retryDelay * 2 : RETRY_BASE_MS,
+      RETRY_MAX_MS
+    );
+    log.info(`retrying filter list download in ${Math.round(this._retryDelay / 1000)}s`);
+
+    this._retryTimer = setTimeout(() => {
+      this._retryTimer = null;
+      this.updateLists().catch((err) => log.warn(`retry failed: ${err.message}`));
+    }, this._retryDelay);
+    if (this._retryTimer.unref) this._retryTimer.unref();
   }
 
   /** Structural sniff: does this body plausibly contain filter rules? */
@@ -400,6 +493,10 @@ class AdblockService extends EventEmitter {
         : [],
       lifetime: this.totals.blocked,
       since: this.totals.since,
+      // Surfaced so the shield can say protection is limited rather than
+      // showing a confident zero. "Nothing blocked" and "nothing loaded to
+      // block with" look identical to a user, and only one of them is fine.
+      seedOnly: this.usingSeed,
     };
   }
 

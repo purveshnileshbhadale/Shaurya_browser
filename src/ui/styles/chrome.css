@@ -1272,3 +1272,10 @@
 /* Windows 11 rounds the window itself; rounding our own corners on top would
    produce a double curve with a sliver of desktop between them. */
 :root[data-platform="win32"] #shell { border-radius: 0; }
+
+/* The shield when the filter lists have not downloaded. Amber rather than
+   red: protection is reduced, not absent — the bundled seed still blocks the
+   largest trackers — and a red alarm for a condition that usually clears
+   itself within seconds of a network appearing would be crying wolf. */
+.shield.is-degraded { color: var(--warning, #d98324); }
+.shield.is-degraded .shield-count { background: var(--warning, #d98324); }
