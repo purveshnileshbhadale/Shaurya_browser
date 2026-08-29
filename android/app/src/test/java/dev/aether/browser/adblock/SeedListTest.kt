@@ -19,9 +19,40 @@ import java.io.File
  */
 class SeedListTest {
 
-    private val engine = FilterEngine().apply {
-        // JVM unit tests run with the module directory as the working dir.
-        addList(File("src/main/assets/filters/seed.txt").readText())
+    private val engine = FilterEngine().apply { addList(seedText()) }
+
+    /**
+     * Read the bundled seed from the source tree.
+     *
+     * A JVM unit test has no `Context`, so the asset is read as a file — and
+     * Gradle does not promise which directory the test runs in (I assumed the
+     * module directory and CI proved otherwise). So try the sensible
+     * candidates, and if none match, say which were tried rather than failing
+     * with a bare FileNotFoundException.
+     */
+    private fun seedText(): String {
+        val relative = "src/main/assets/filters/seed.txt"
+        val candidates = listOf(
+            File(relative),                       // working dir = app/
+            File("app/$relative"),                // working dir = android/
+            File("android/app/$relative"),        // working dir = repo root
+        )
+        candidates.firstOrNull { it.isFile }?.let { return it.readText() }
+
+        // Last resort: walk up from wherever we are and look for it.
+        var dir: File? = File(".").absoluteFile
+        while (dir != null) {
+            val found = File(dir, "app/$relative").takeIf { it.isFile }
+                ?: File(dir, relative).takeIf { it.isFile }
+            if (found != null) return found.readText()
+            dir = dir.parentFile
+        }
+
+        throw AssertionError(
+            "could not find the seed list. Working directory is "
+                + File(".").absolutePath + "; tried "
+                + candidates.joinToString { it.path }
+        )
     }
 
     private val page = "https://news.example.org/article"
@@ -71,12 +102,19 @@ class SeedListTest {
     }
 
     @Test
-    fun `visiting an ad company's own website still works`() {
+    fun `an ad company's own site loads its own resources`() {
         // Several seed rules name domains that are also a real company's
-        // site. `BlockerService.intercept` exempts main-frame navigation, so
-        // this is belt and braces — but the rules themselves should say what
-        // they mean, and an unqualified `||criteo.com^` here means "nobody
-        // can open criteo.com", which is not what a blocker is for.
+        // website. Once you are *on* that site its own requests are
+        // first-party, so the third-party scoping must let them through —
+        // otherwise the seed would render those sites unusable.
+        //
+        // Note what this deliberately does not test: whether *navigating* to
+        // one is blocked. Both blockers exempt main-frame navigation before
+        // the engine is consulted at all (`request.isForMainFrame` here,
+        // `resourceType === 'mainFrame'` on desktop), so the engine is never
+        // asked. Asking it anyway — with some other site as the page URL, as
+        // an earlier version of this test did — models a request that cannot
+        // occur, and fails for a reason that says nothing about the product.
         val mustLoad = listOf(
             "https://www.criteo.com/careers",
             "https://www.hotjar.com/pricing",
@@ -96,7 +134,12 @@ class SeedListTest {
             "https://github.com/explore",
         )
         for (url in mustLoad) {
-            assertFalse("navigating to $url was blocked", blocks(url, ResourceType.MAIN_FRAME))
+            // The site as its own page URL: what a first-party request from
+            // that page actually looks like.
+            assertFalse(
+                "$url was blocked while browsing that very site",
+                engine.match(url, url, ResourceType.SCRIPT).block,
+            )
         }
     }
 
