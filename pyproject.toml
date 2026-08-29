@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shaurya"
+version = "1.0.0"
+description = "SHAURYA - a search engine you can run yourself: crawler, index, ranker and web UI in pure Python."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["search engine", "crawler", "inverted index", "bm25", "pagerank"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+]
+dependencies = []
+
+[project.scripts]
+shaurya = "shaurya.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/purveshnileshbhadale/Shaurya_browser"
+
+[tool.setuptools]
+packages = ["shaurya"]
+
+[tool.setuptools.package-data]
+shaurya = ["py.typed"]
