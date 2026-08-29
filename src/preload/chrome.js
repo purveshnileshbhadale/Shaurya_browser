@@ -19,7 +19,7 @@ const EVENT_SET = new Set(EVENTS);
 /** event name -> Set<callback> */
 const listeners = new Map();
 
-ipcRenderer.on('aether:event', (_event, channel, payload) => {
+ipcRenderer.on('shaurya:event', (_event, channel, payload) => {
   const set = listeners.get(channel);
   if (!set) return;
   for (const fn of set) {
@@ -27,7 +27,7 @@ ipcRenderer.on('aether:event', (_event, channel, payload) => {
       fn(payload);
     } catch (err) {
       // A throwing listener must not stop the others from running.
-      console.error(`[aether] listener for ${channel} failed:`, err);
+      console.error(`[shaurya] listener for ${channel} failed:`, err);
     }
   }
 });
@@ -42,9 +42,9 @@ const api = {
    */
   async invoke(channel, payload) {
     if (!INVOKE_SET.has(channel)) {
-      throw new Error(`aether: "${channel}" is not an invokable channel`);
+      throw new Error(`shaurya: "${channel}" is not an invokable channel`);
     }
-    const result = await ipcRenderer.invoke('aether:invoke', channel, payload);
+    const result = await ipcRenderer.invoke('shaurya:invoke', channel, payload);
     if (result && typeof result === 'object' && '__error' in result) {
       throw new Error(result.__error);
     }
@@ -54,9 +54,9 @@ const api = {
   /** Fire-and-forget message to the main process. */
   send(channel, payload) {
     if (!SEND_SET.has(channel)) {
-      throw new Error(`aether: "${channel}" is not a sendable channel`);
+      throw new Error(`shaurya: "${channel}" is not a sendable channel`);
     }
-    ipcRenderer.send('aether:send', channel, payload);
+    ipcRenderer.send('shaurya:send', channel, payload);
   },
 
   /**
@@ -65,7 +65,7 @@ const api = {
    */
   on(channel, callback) {
     if (!EVENT_SET.has(channel)) {
-      throw new Error(`aether: "${channel}" is not a known event`);
+      throw new Error(`shaurya: "${channel}" is not a known event`);
     }
     if (typeof callback !== 'function') throw new TypeError('callback must be a function');
     let set = listeners.get(channel);
@@ -112,4 +112,4 @@ const api = {
   channels: Object.freeze({ invoke: INVOKE, send: SEND, events: EVENTS }),
 };
 
-contextBridge.exposeInMainWorld('aether', Object.freeze(api));
+contextBridge.exposeInMainWorld('shaurya', Object.freeze(api));

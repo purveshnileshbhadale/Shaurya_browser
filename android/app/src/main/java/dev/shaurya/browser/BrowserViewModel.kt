@@ -1,12 +1,12 @@
-package dev.aether.browser
+package dev.shaurya.browser
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import dev.aether.browser.adblock.BlockerService
-import dev.aether.browser.ai.AiClient
-import dev.aether.browser.data.AetherStore
-import dev.aether.browser.data.SavedTab
+import dev.shaurya.browser.adblock.BlockerService
+import dev.shaurya.browser.ai.AiClient
+import dev.shaurya.browser.data.ShauryaStore
+import dev.shaurya.browser.data.SavedTab
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
  */
 class BrowserViewModel(app: Application) : AndroidViewModel(app) {
 
-    val store = AetherStore(app)
+    val store = ShauryaStore(app)
     val blocker = BlockerService(app)
     val ai = AiClient(store)
 
@@ -55,16 +55,16 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
     // and the new tab page without either of them polling the store.
 
     private val _stats = MutableStateFlow(store.shieldStats)
-    val stats: StateFlow<dev.aether.browser.data.ShieldStats> = _stats.asStateFlow()
+    val stats: StateFlow<dev.shaurya.browser.data.ShieldStats> = _stats.asStateFlow()
 
     private val _bookmarks = MutableStateFlow(store.bookmarks.toList())
-    val bookmarks: StateFlow<List<dev.aether.browser.data.Bookmark>> = _bookmarks.asStateFlow()
+    val bookmarks: StateFlow<List<dev.shaurya.browser.data.Bookmark>> = _bookmarks.asStateFlow()
 
     private val _history = MutableStateFlow(store.history.toList())
-    val history: StateFlow<List<dev.aether.browser.data.HistoryEntry>> = _history.asStateFlow()
+    val history: StateFlow<List<dev.shaurya.browser.data.HistoryEntry>> = _history.asStateFlow()
 
     private val _settings = MutableStateFlow(store.settings)
-    val settings: StateFlow<dev.aether.browser.data.Settings> = _settings.asStateFlow()
+    val settings: StateFlow<dev.shaurya.browser.data.Settings> = _settings.asStateFlow()
 
     /** Per-tab count of http:// URLs rewritten to https://. */
     private val httpsUpgrades = HashMap<Long, Int>()
@@ -78,13 +78,15 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun flushStats() {
         val blocked = blocker.drainBlockedTotal()
-        val upgrades = synchronized(httpsUpgrades) {
-            val total = pendingUpgrades
+        // Long throughout: these feed a persisted lifetime total, and mixing
+        // Int and Long here is what broke the build last time.
+        val upgrades: Long = synchronized(httpsUpgrades) {
+            val total = pendingUpgrades.toLong()
             pendingUpgrades = 0
             total
         }
         if (blocked == 0L && upgrades == 0L) return
-        store.addShieldStats(blocked = blocked, httpsUpgrades = upgrades.toLong())
+        store.addShieldStats(blocked = blocked, httpsUpgrades = upgrades)
         _stats.value = store.shieldStats
     }
 
@@ -102,19 +104,19 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         synchronized(httpsUpgrades) { httpsUpgrades[tabId] ?: 0 }
 
     /** Most-visited sites for the new tab page. */
-    fun topSites(): List<dev.aether.browser.ui.TopSite> =
-        store.topSites().map { dev.aether.browser.ui.TopSite(it.url, it.title) }
+    fun topSites(): List<dev.shaurya.browser.ui.TopSite> =
+        store.topSites().map { dev.shaurya.browser.ui.TopSite(it.url, it.title) }
 
     // -- shields, per site --------------------------------------------------
 
     fun shieldsOn(url: String?): Boolean {
-        val host = dev.aether.browser.adblock.FilterEngine.hostOf((url ?: "").lowercase())
+        val host = dev.shaurya.browser.adblock.FilterEngine.hostOf((url ?: "").lowercase())
             ?: return true
         return !blocker.isAllowed(host)
     }
 
     fun setShieldsOn(url: String?, on: Boolean) {
-        val host = dev.aether.browser.adblock.FilterEngine.hostOf((url ?: "").lowercase()) ?: return
+        val host = dev.shaurya.browser.adblock.FilterEngine.hostOf((url ?: "").lowercase()) ?: return
         blocker.setSiteEnabled(host, on)
         updateSettings { it.copy(shieldExceptions = blocker.exceptions().toList()) }
     }
@@ -140,7 +142,7 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         _history.value = emptyList()
     }
 
-    fun updateSettings(transform: (dev.aether.browser.data.Settings) -> dev.aether.browser.data.Settings) {
+    fun updateSettings(transform: (dev.shaurya.browser.data.Settings) -> dev.shaurya.browser.data.Settings) {
         store.updateSettings(transform)
         _settings.value = store.settings
         // The blocker reads this at request time, so a change has to reach it

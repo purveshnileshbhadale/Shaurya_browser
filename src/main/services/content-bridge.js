@@ -41,7 +41,7 @@ class ContentBridge extends EventEmitter {
     if (this._installed) return;
     this._installed = true;
 
-    ipcMain.handle('aether:content', async (event, op, payload) => {
+    ipcMain.handle('shaurya:content', async (event, op, payload) => {
       const fn = this._handlers.get(op);
       if (!fn) return null;
       try {
@@ -52,11 +52,11 @@ class ContentBridge extends EventEmitter {
       }
     });
 
-    ipcMain.on('aether:content-event', (event, op, payload) => {
+    ipcMain.on('shaurya:content-event', (event, op, payload) => {
       this.emit(op, payload, { sender: event.sender });
     });
 
-    ipcMain.on('aether:content-reply', (_event, id, result, error) => {
+    ipcMain.on('shaurya:content-reply', (_event, id, result, error) => {
       const entry = this._pending.get(id);
       if (!entry) return; // already timed out
       this._pending.delete(id);
@@ -87,7 +87,7 @@ class ContentBridge extends EventEmitter {
       if (timer.unref) timer.unref();
 
       this._pending.set(id, { resolve, reject, timer });
-      webContents.send('aether:content-command', id, op, payload);
+      webContents.send('shaurya:content-command', id, op, payload);
     });
   }
 }

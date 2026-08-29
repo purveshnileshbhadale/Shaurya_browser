@@ -8,7 +8,7 @@
  * on disk; one that was never written did not.
  *
  * Tor is a real SOCKS5 proxy to a local Tor daemon, not an approximation.
- * Aether does not bundle Tor: shipping a browser that claims Tor protection
+ * Shaurya does not bundle Tor: shipping a browser that claims Tor protection
  * while routing through something else would be actively dangerous, so if no
  * daemon is reachable the UI says Tor is unavailable and refuses to pretend.
  */
@@ -227,7 +227,7 @@ class GhostService extends EventEmitter {
 
     // Write to a sibling then rename: a crash mid-write must not leave the
     // user with a truncated file where their photo used to be.
-    const temp = `${filePath}.aether-tmp`;
+    const temp = `${filePath}.shaurya-tmp`;
     await fs.writeFile(temp, result.data);
     await fs.rename(temp, filePath);
 

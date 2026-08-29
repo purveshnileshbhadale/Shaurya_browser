@@ -16,8 +16,8 @@ const path = require('node:path');
 
 /** Load the service against a throwaway profile, with `request` stubbed. */
 function load({ respond }) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aether-adblock-'));
-  process.env.AETHER_USER_DATA = root;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shaurya-adblock-'));
+  process.env.SHAURYA_USER_DATA = root;
 
   const netPath = require.resolve('../src/main/util/net');
   const servicePath = require.resolve('../src/main/services/adblock');
@@ -51,7 +51,7 @@ function load({ respond }) {
     delete require.cache[netPath];
     delete require.cache[servicePath];
     fs.rmSync(root, { recursive: true, force: true });
-    delete process.env.AETHER_USER_DATA;
+    delete process.env.SHAURYA_USER_DATA;
   } };
 }
 

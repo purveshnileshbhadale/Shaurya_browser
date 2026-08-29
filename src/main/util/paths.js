@@ -2,8 +2,8 @@
 /**
  * Centralised filesystem layout.
  *
- * Everything Aether writes lives under one root so that a profile can be
- * wiped, backed up or synced as a unit. `AETHER_USER_DATA` overrides the
+ * Everything Shaurya writes lives under one root so that a profile can be
+ * wiped, backed up or synced as a unit. `SHAURYA_USER_DATA` overrides the
  * location, which is what the smoke tests use to stay out of the real
  * profile.
  */
@@ -23,8 +23,8 @@ let userDataRoot = null;
 /** Root of all mutable state. Created lazily on first use. */
 function userData(...parts) {
   if (!userDataRoot) {
-    userDataRoot = process.env.AETHER_USER_DATA
-      ? path.resolve(process.env.AETHER_USER_DATA)
+    userDataRoot = process.env.SHAURYA_USER_DATA
+      ? path.resolve(process.env.SHAURYA_USER_DATA)
       : app.getPath('userData');
     fs.mkdirSync(userDataRoot, { recursive: true });
   }

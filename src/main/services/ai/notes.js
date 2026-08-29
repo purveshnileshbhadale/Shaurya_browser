@@ -418,7 +418,7 @@ function withFrontMatter(note) {
     `title: ${JSON.stringify(note.title)}`,
     note.sourceUrl ? `source: ${note.sourceUrl}` : null,
     `created: ${new Date(note.created).toISOString()}`,
-    'generator: Aether',
+    'generator: Shaurya',
     '---',
     '',
   ].filter(Boolean).join('\n');

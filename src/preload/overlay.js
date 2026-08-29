@@ -26,18 +26,18 @@ function subscribe(channel, handler) {
     } catch (err) {
       // A throwing renderer callback must not take the IPC listener down
       // with it, or the overlay silently stops updating.
-      console.error(`[aether] overlay handler for ${channel} failed`, err);
+      console.error(`[shaurya] overlay handler for ${channel} failed`, err);
     }
   };
   ipcRenderer.on(channel, wrapped);
   return () => ipcRenderer.removeListener(channel, wrapped);
 }
 
-contextBridge.exposeInMainWorld('aetherHud', {
+contextBridge.exposeInMainWorld('shauryaHud', {
   onMetrics: (handler) => subscribe(HUD_CHANNELS[0], handler),
 });
 
-contextBridge.exposeInMainWorld('aetherPrompter', {
+contextBridge.exposeInMainWorld('shauryaPrompter', {
   onScript: (handler) => subscribe(PROMPTER_CHANNELS[0], handler),
   onControl: (handler) => subscribe(PROMPTER_CHANNELS[1], handler),
 });

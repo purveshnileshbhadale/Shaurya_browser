@@ -4,7 +4,7 @@
  * The HTTPS-only case is the important one: it must explain what happened
  * and make continuing over plaintext a deliberate choice, not a reflex.
  */
-const api = window.aether;
+const api = window.shaurya;
 const params = new URLSearchParams(location.search);
 const kind = params.get('kind') || 'network';
 const url = params.get('url') || '';
@@ -16,7 +16,7 @@ const root = document.getElementById('root');
 const COPY = {
   'https-only': {
     title: 'This site does not support a secure connection',
-    body: 'Aether upgrades every page to HTTPS. This site answered only over plain HTTP, '
+    body: 'Shaurya upgrades every page to HTTPS. This site answered only over plain HTTP, '
       + 'which means anyone on the network can read and modify what you send and receive.',
     danger: true,
     actions: [

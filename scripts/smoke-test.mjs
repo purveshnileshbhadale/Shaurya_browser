@@ -17,7 +17,7 @@ if (!existsSync(electron)) {
   process.exit(1);
 }
 
-const profile = mkdtempSync(path.join(tmpdir(), 'aether-smoke-'));
+const profile = mkdtempSync(path.join(tmpdir(), 'shaurya-smoke-'));
 const args = [path.join(here, 'smoke-test.js'), '--no-sandbox'];
 
 // Use xvfb when there is no display, so this runs the same way in CI.
@@ -30,9 +30,9 @@ const result = spawnSync(command, commandArgs, {
   stdio: 'inherit',
   env: {
     ...process.env,
-    AETHER_USER_DATA: profile,
-    AETHER_ALLOW_ROOT: '1',
-    AETHER_LOG: process.env.AETHER_LOG || 'warn',
+    SHAURYA_USER_DATA: profile,
+    SHAURYA_ALLOW_ROOT: '1',
+    SHAURYA_LOG: process.env.SHAURYA_LOG || 'warn',
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
   },
 });

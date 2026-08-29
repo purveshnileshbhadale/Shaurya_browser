@@ -108,7 +108,7 @@ window.addEventListener('keydown', (event) => {
 
 // ---- content --------------------------------------------------------------
 
-window.aetherPrompter?.onScript((payload) => {
+window.shauryaPrompter?.onScript((payload) => {
   const text = String(payload?.body || '').trim();
   scriptEl.replaceChildren();
   if (!text) {
@@ -136,7 +136,7 @@ window.aetherPrompter?.onScript((payload) => {
   }
 });
 
-window.aetherPrompter?.onControl((command) => {
+window.shauryaPrompter?.onControl((command) => {
   if (command === 'play') setPlaying(true);
   else if (command === 'pause') setPlaying(false);
   else if (command === 'restart') restart();

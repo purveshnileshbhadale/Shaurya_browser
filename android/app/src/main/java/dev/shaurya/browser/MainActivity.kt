@@ -1,4 +1,4 @@
-package dev.aether.browser
+package dev.shaurya.browser
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -37,16 +37,16 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
-import dev.aether.browser.media.PlaybackService
-import dev.aether.browser.ui.AetherTheme
-import dev.aether.browser.ui.BookmarksSheet
-import dev.aether.browser.ui.HistorySheet
-import dev.aether.browser.ui.LocalReducedMotion
-import dev.aether.browser.ui.NewTabPage
-import dev.aether.browser.ui.SettingsSheet
-import dev.aether.browser.ui.ShieldsSheet
-import dev.aether.browser.ui.ShieldsState
-import dev.aether.browser.ui.isDarkTheme
+import dev.shaurya.browser.media.PlaybackService
+import dev.shaurya.browser.ui.ShauryaTheme
+import dev.shaurya.browser.ui.BookmarksSheet
+import dev.shaurya.browser.ui.HistorySheet
+import dev.shaurya.browser.ui.LocalReducedMotion
+import dev.shaurya.browser.ui.NewTabPage
+import dev.shaurya.browser.ui.SettingsSheet
+import dev.shaurya.browser.ui.ShieldsSheet
+import dev.shaurya.browser.ui.ShieldsState
+import dev.shaurya.browser.ui.isDarkTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
 
-            AetherTheme(accent = model.store.settings.accent, themeMode = model.store.settings.theme) {
+            ShauryaTheme(accent = model.store.settings.accent, themeMode = model.store.settings.theme) {
                 // Paint the WebView's own backing to match, or every
                 // navigation flashes white before the page paints — the most
                 // noticeable remaining seam in a dark theme. Remembered as
@@ -737,7 +737,7 @@ class MainActivity : ComponentActivity() {
         // primitives and can only set a title on a notification. The tab id
         // is captured here rather than passed by the page, so a page cannot
         // report playback on another tab's behalf.
-        view.addJavascriptInterface(MediaBridge(tabId), "AetherMedia")
+        view.addJavascriptInterface(MediaBridge(tabId), "ShauryaMedia")
 
         view.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(webView: WebView, progress: Int) {
@@ -774,8 +774,8 @@ class MainActivity : ComponentActivity() {
         view.evaluateJavascript(
             """
             (function() {
-              if (window.__aetherMedia) return;
-              window.__aetherMedia = true;
+              if (window.__shauryaMedia) return;
+              window.__shauryaMedia = true;
 
               var last = '';
               function active() {
@@ -795,7 +795,7 @@ class MainActivity : ComponentActivity() {
                 var sig = playing + '|' + title + '|' + artist;
                 if (sig === last) return;
                 last = sig;
-                if (window.AetherMedia) AetherMedia.report(playing, title, artist);
+                if (window.ShauryaMedia) ShauryaMedia.report(playing, title, artist);
               }
               ['play','pause','ended','loadedmetadata','emptied'].forEach(function(t) {
                 document.addEventListener(t, report, true);
@@ -809,7 +809,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun injectCosmeticFilters(view: WebView, url: String) {
-        val host = dev.aether.browser.adblock.FilterEngine.hostOf(url.lowercase()) ?: return
+        val host = dev.shaurya.browser.adblock.FilterEngine.hostOf(url.lowercase()) ?: return
         val css = model.blocker.engine.cosmeticCss(host)
         if (css.isEmpty()) return
 
@@ -820,7 +820,7 @@ class MainActivity : ComponentActivity() {
             """
             (function() {
               var style = document.createElement('style');
-              style.setAttribute('data-aether', 'cosmetic');
+              style.setAttribute('data-shaurya', 'cosmetic');
               style.textContent = $literal;
               (document.head || document.documentElement).appendChild(style);
             })();

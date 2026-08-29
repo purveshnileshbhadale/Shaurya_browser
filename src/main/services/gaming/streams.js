@@ -152,7 +152,7 @@ class StreamService extends EventEmitter {
       backgroundColor: '#000000',
       minWidth: 240,
       minHeight: 135,
-      title: `${channel} — Aether`,
+      title: `${channel} — Shaurya`,
     });
     // 'screen-saver' is the only level that reliably stays above a
     // borderless-fullscreen game on Windows.
@@ -193,7 +193,7 @@ class StreamService extends EventEmitter {
     const bounds = fractionToBounds(preset.chat, area);
     this.chatWindow = new BaseWindow({
       ...bounds, frame: false, alwaysOnTop: true, skipTaskbar: true,
-      backgroundColor: '#18181b', title: 'Chat — Aether',
+      backgroundColor: '#18181b', title: 'Chat — Shaurya',
     });
     this.chatWindow.setAlwaysOnTop(true, 'screen-saver');
 

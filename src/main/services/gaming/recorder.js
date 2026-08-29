@@ -228,7 +228,7 @@ class RecorderService extends EventEmitter {
 
   async outputDir() {
     const configured = this.config().directory;
-    const dir = configured || path.join(app.getPath('videos'), 'Aether');
+    const dir = configured || path.join(app.getPath('videos'), 'Shaurya');
     await fs.mkdir(dir, { recursive: true });
     return dir;
   }
@@ -237,7 +237,7 @@ class RecorderService extends EventEmitter {
     const dir = await this.outputDir();
     // Sortable, collision-free, and readable at a glance in a file manager.
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const file = path.join(dir, `aether-${kind}-${stamp}.webm`);
+    const file = path.join(dir, `shaurya-${kind}-${stamp}.webm`);
     await fs.writeFile(file, data);
     return { path: file, bytes: data.length, kind, at: Date.now() };
   }

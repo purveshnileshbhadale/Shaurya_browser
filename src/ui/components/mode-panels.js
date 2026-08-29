@@ -121,7 +121,7 @@ function renderPerfPanel(body) {
         dataset: { hibernated: String(row.hibernated), capped: String(row.capped) },
         title: row.cap
           ? `Capped at ${row.cap.cpuPercent ?? '—'}% CPU / ${row.cap.memoryMb ?? '—'} MB. `
-            + 'Aether cannot hard-limit a renderer, so a tab over its cap for '
+            + 'Shaurya cannot hard-limit a renderer, so a tab over its cap for '
             + 'several seconds is put to sleep instead.'
           : row.url,
         oncontextmenu: (event) => { event.preventDefault(); openCapMenu(row); },
@@ -220,7 +220,7 @@ function renderStreamPanel(body) {
         }, { variant: 'primary' })),
       limitNote('The player is a real always-on-top window, so it stays visible '
         + 'over a borderless-fullscreen game. Streams play through the '
-        + 'platform\'s own embed — Aether does not touch the video stream.')),
+        + 'platform\'s own embed — Shaurya does not touch the video stream.')),
     section('Layout', layoutRow),
     section('Saved', list),
   );
@@ -466,7 +466,7 @@ function renderTeleprompter() {
         invoke('creator.saveScript', { title: text.value.slice(0, 40), body: text.value })
           .then((s) => toast(`Saved — about ${Math.round(s.estimatedSeconds / 60)} min at 150 wpm`, 'success'));
       }),
-      button('Open overlay', () => invoke('tabs.create', { url: 'aether://teleprompter' }))),
+      button('Open overlay', () => invoke('tabs.create', { url: 'shaurya://teleprompter' }))),
     limitNote('The overlay floats above other windows and scrolls at a set words-'
       + 'per-minute. A USB foot pedal that emits a spare function key can '
       + 'start and stop it — set which key in Settings → Creator.'));
@@ -555,7 +555,7 @@ function renderSchedulePanel(body) {
 
   body.append(
     section('Connected', platforms,
-      limitNote('Publishing needs an account connection per platform. Aether '
+      limitNote('Publishing needs an account connection per platform. Shaurya '
         + 'stores the token in your encrypted vault. Anything queued for a '
         + 'platform that is not connected is marked blocked rather than left '
         + 'looking like it is about to go out.')),
@@ -755,7 +755,7 @@ function renderGhostPanel(body) {
 
   body.append(
     section('Tor', torRow,
-      limitNote('Aether does not bundle Tor. If no local Tor proxy is listening, '
+      limitNote('Shaurya does not bundle Tor. If no local Tor proxy is listening, '
         + 'routing fails loudly rather than falling back to a direct connection '
         + 'while still showing a Tor badge.')),
     section('DNS', dohRow,

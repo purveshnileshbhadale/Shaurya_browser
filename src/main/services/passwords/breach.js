@@ -44,7 +44,7 @@ async function checkPassword(password) {
       const res = await request(API + prefix, {
         timeout: 10000,
         headers: {
-          'User-Agent': 'Aether-Browser',
+          'User-Agent': 'Shaurya-Browser',
           // Pads every response to a uniform size, so a network observer
           // cannot infer the prefix from the response length.
           'Add-Padding': 'true',

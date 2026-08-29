@@ -6,7 +6,7 @@
  * be left in an unsaved state is a settings screen that lies to you.
  */
 
-const api = window.aether;
+const api = window.shaurya;
 
 const nav = document.getElementById('nav');
 const content = document.getElementById('content');
@@ -65,7 +65,7 @@ let active = 'features';
   await reload();
   applyTheme();
 
-  // `aether://settings/#privacy` deep-links to a section, which is what the
+  // `shaurya://settings/#privacy` deep-links to a section, which is what the
   // command palette uses to jump straight to a setting. This has to resolve
   // *before* the first renderNav(), or the sidebar highlights the default
   // section while the pane shows the linked one.
@@ -331,7 +331,7 @@ async function renderFeatureStore() {
   text.append(
     el('h3', '', `${footprint.activeCount} of ${footprint.total} features on`),
     el('p', '', `Estimated footprint: ${footprint.label}. `
-      + 'Switch off what you do not use to keep Aether light.')
+      + 'Switch off what you do not use to keep Shaurya light.')
   );
   gauge.append(dial, text);
   section.appendChild(gauge);
@@ -407,7 +407,7 @@ function renderAppearance() {
   section.append(
     selectRow('Theme', 'appearance.theme',
       [['system', 'Match system'], ['light', 'Light'], ['dark', 'Dark']],
-      'Aether follows your OS setting unless you choose otherwise.'),
+      'Shaurya follows your OS setting unless you choose otherwise.'),
     swatchRow('Accent colour', 'appearance.accent'),
     selectRow('Density', 'appearance.density',
       [['comfortable', 'Comfortable'], ['compact', 'Compact']],
@@ -459,7 +459,7 @@ function renderPrivacy() {
   const promise = el('div', 'callout is-good');
   promise.append(
     el('h4', '', 'Your browsing is never sold or shared with advertisers'),
-    el('p', '', 'On any tier, free or Pro. Sync stores only ciphertext, and Aether has '
+    el('p', '', 'On any tier, free or Pro. Sync stores only ciphertext, and Shaurya has '
       + 'no analytics or telemetry of any kind.')
   );
   section.appendChild(promise);
@@ -525,7 +525,7 @@ function renderVpn() {
       el('h4', '', `Status: ${status.status}`),
       el('p', '', status.scope
         ? `This tunnel protects ${status.scope}.`
-        : 'Not connected. Aether uses a device-wide WireGuard tunnel when the system '
+        : 'Not connected. Shaurya uses a device-wide WireGuard tunnel when the system '
           + 'tools are installed, and a browser-only tunnel otherwise — the difference '
           + 'is shown here whenever you connect.')
     );
@@ -749,7 +749,7 @@ function renderProfiles() {
 
 function renderExtensions() {
   const section = sectionShell('Extensions',
-    'Chrome Web Store extensions install natively — Aether runs the same Manifest V3 '
+    'Chrome Web Store extensions install natively — Shaurya runs the same Manifest V3 '
     + 'implementation as Chromium itself.');
 
   const store = el('button', 'btn btn-primary', 'Open the Chrome Web Store');
@@ -817,7 +817,7 @@ function renderSync() {
       if (status.enabled) {
         await api.invoke('sync.now', {});
       } else {
-        const endpoint = prompt('Sync server URL', status.endpoint || 'https://sync.aether.dev');
+        const endpoint = prompt('Sync server URL', status.endpoint || 'https://sync.shaurya.dev');
         if (!endpoint) return;
         const passphrase = prompt('Sync passphrase (at least 12 characters)');
         if (!passphrase) return;
@@ -919,10 +919,10 @@ function captureChord(button, command) {
 }
 
 function renderAbout() {
-  const section = sectionShell('About Aether', '');
-  fetch('aether://api/version').then((r) => r.json()).then((version) => {
+  const section = sectionShell('About Shaurya', '');
+  fetch('shaurya://api/version').then((r) => r.json()).then((version) => {
     section.append(
-      infoRow('Aether', version.aether),
+      infoRow('Shaurya', version.shaurya),
       infoRow('Chromium', version.chromium),
       infoRow('Node', version.node),
       infoRow('V8', version.v8),
@@ -932,7 +932,7 @@ function renderAbout() {
 
   const promise = el('div', 'callout is-good');
   promise.append(
-    el('h4', '', 'What Aether will never do'),
+    el('h4', '', 'What Shaurya will never do'),
     el('p', '', 'Sell or share your browsing with advertisers, on any tier. Collect '
       + 'analytics or telemetry. Read your pages without you asking. Send anything to a '
       + 'sync server that the server could decrypt.')

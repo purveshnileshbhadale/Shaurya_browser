@@ -88,7 +88,7 @@ class ContextBuilder {
    * Build the full grounding payload for a request.
    *
    * @param {object} opts
-   * @param {import('../../window/browser-window').AetherWindow} opts.window
+   * @param {import('../../window/browser-window').ShauryaWindow} opts.window
    * @param {boolean} [opts.includeOtherTabs]
    * @param {string[]} [opts.tabIds]  explicit subset the user picked
    */

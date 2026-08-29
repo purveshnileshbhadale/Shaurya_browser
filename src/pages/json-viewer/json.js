@@ -32,7 +32,7 @@ let raw = '';
 }());
 
 document.getElementById('raw').addEventListener('click', () => {
-  window.aether.invoke('tabs.navigate', { url: source });
+  window.shaurya.invoke('tabs.navigate', { url: source });
 });
 document.getElementById('copy').addEventListener('click', () => {
   navigator.clipboard.writeText(JSON.stringify(data, null, 2)).catch(() => {});

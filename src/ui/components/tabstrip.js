@@ -244,5 +244,5 @@ export function createTabStrip({ container, orientation }) {
 
 /** Right-click menu for a tab. Rendered by the popover module. */
 function showTabMenu(tabId, x, y) {
-  window.dispatchEvent(new CustomEvent('aether:tabmenu', { detail: { tabId, x, y } }));
+  window.dispatchEvent(new CustomEvent('shaurya:tabmenu', { detail: { tabId, x, y } }));
 }

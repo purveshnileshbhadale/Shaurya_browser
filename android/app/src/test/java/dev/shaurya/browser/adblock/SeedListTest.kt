@@ -1,4 +1,4 @@
-package dev.aether.browser.adblock
+package dev.shaurya.browser.adblock
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

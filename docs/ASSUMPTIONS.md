@@ -91,7 +91,7 @@ be quietly fudged, so:
 - **The UI says which one is active** — "entire device" or "this browser only".
 
 The free tier is capped at 10 GiB/month, enforced client-side and again by the
-provider. Aether's own VPN endpoint is a configurable URL: no servers ship with
+provider. Shaurya's own VPN endpoint is a configurable URL: no servers ship with
 this repository, and a "Custom WireGuard" provider lets you point the same UI at
 Mullvad, IVPN or your own box with no account at all.
 
@@ -250,9 +250,9 @@ name:
 | Epic library | The free-games feed | Epic has **no public library API**; the panel says so instead of showing an empty list |
 | Cloud-save conflicts | Which titles support cloud saves | **No storefront exposes per-title save state**; that dialog is client-side only |
 | LFG | Steam friends currently in-game, with joinable lobbies | Other platforms have no equivalent public API |
-| Group study room | Pinning an existing room over your tabs | Aether does not host calls: no signalling, no TURN |
+| Group study room | Pinning an existing room over your tabs | Shaurya does not host calls: no signalling, no TURN |
 | OCR search | Indexing, storage and search | No bundled engine (~15 MB WASM). Pages with a text layer are already searchable |
-| Tor | A real SOCKS5 route to a local daemon, and a verify button | Aether does not bundle Tor. Without one it **refuses** rather than falling back |
+| Tor | A real SOCKS5 route to a local daemon, and a verify button | Shaurya does not bundle Tor. Without one it **refuses** rather than falling back |
 | Terminal | A working shell in a dev profile | A PTY. Pipe-backed, so vim, htop and less will not render |
 | Postgres/MySQL | The full client | Their drivers, which are optional installs |
 

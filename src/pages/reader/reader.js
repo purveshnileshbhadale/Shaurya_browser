@@ -4,7 +4,7 @@
  * The article was extracted in the page by the content preload; this renders
  * it with typography controls that persist per profile.
  */
-const api = window.aether;
+const api = window.shaurya;
 const article = document.getElementById('article');
 const toolbar = document.getElementById('toolbar');
 
@@ -15,7 +15,7 @@ apply();
   const tabId = new URLSearchParams(location.search).get('tab');
   let data = null;
   try {
-    const response = await fetch(`aether://api/reader?tab=${encodeURIComponent(tabId)}`);
+    const response = await fetch(`shaurya://api/reader?tab=${encodeURIComponent(tabId)}`);
     if (response.ok) data = await response.json();
   } catch { /* fall through to the message below */ }
 
@@ -84,14 +84,14 @@ function apply() {
 function load() {
   try {
     return { size: 19, measure: '68ch', theme: 'default',
-      ...JSON.parse(localStorage.getItem('aether.reader') || '{}') };
+      ...JSON.parse(localStorage.getItem('shaurya.reader') || '{}') };
   } catch {
     return { size: 19, measure: '68ch', theme: 'default' };
   }
 }
 
 function save() {
-  try { localStorage.setItem('aether.reader', JSON.stringify(prefs)); } catch { /* ignore */ }
+  try { localStorage.setItem('shaurya.reader', JSON.stringify(prefs)); } catch { /* ignore */ }
 }
 
 function button(label, onclick) {

@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
-package dev.aether.browser
+package dev.shaurya.browser
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -65,8 +65,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.aether.browser.ui.LocalReducedMotion
-import dev.aether.browser.ui.ShieldButton
+import dev.shaurya.browser.ui.LocalReducedMotion
+import dev.shaurya.browser.ui.ShieldButton
 
 /**
  * The browser's Compose surfaces.

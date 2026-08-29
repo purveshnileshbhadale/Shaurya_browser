@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
-package dev.aether.browser.ui
+package dev.shaurya.browser.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

@@ -11,24 +11,24 @@
  * Two rules hold throughout:
  *   1. Nothing here trusts the page. Page script shares the DOM with us but
  *      not this JavaScript world, and we never eval page-supplied strings.
- *   2. The privileged `window.aether` bridge is exposed *only* on
- *      `aether://` documents. The main process independently re-checks that
+ *   2. The privileged `window.shaurya` bridge is exposed *only* on
+ *      `shaurya://` documents. The main process independently re-checks that
  *      (ipc/router.js), so a page that somehow reaches the channel still
  *      gets refused.
  */
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
-const IS_INTERNAL = location.protocol === 'aether:';
+const IS_INTERNAL = location.protocol === 'shaurya:';
 const IS_TOP = window.top === window;
 
 /** Ask the main process for something page-scoped. */
 function call(op, payload) {
-  return ipcRenderer.invoke('aether:content', op, payload);
+  return ipcRenderer.invoke('shaurya:content', op, payload);
 }
 
 /** Tell the main process something happened, without waiting. */
 function notify(op, payload) {
-  ipcRenderer.send('aether:content-event', op, payload);
+  ipcRenderer.send('shaurya:content-event', op, payload);
 }
 
 // ===========================================================================
@@ -125,7 +125,7 @@ const cosmetic = {
 
     if (!this.styleEl) {
       this.styleEl = document.createElement('style');
-      this.styleEl.setAttribute('data-aether', 'cosmetic');
+      this.styleEl.setAttribute('data-shaurya', 'cosmetic');
       (document.head || document.documentElement).appendChild(this.styleEl);
     }
     // `display:none !important` is what every blocker uses; anything softer
@@ -228,7 +228,7 @@ const reader = {
 
   _clean(root) {
     const strip = 'script,style,noscript,iframe,form,button,input,svg,canvas,'
-      + 'nav,aside,footer,header,[role=navigation],[aria-hidden=true],[data-aether]';
+      + 'nav,aside,footer,header,[role=navigation],[aria-hidden=true],[data-shaurya]';
     for (const el of root.querySelectorAll(strip)) el.remove();
     // Drop presentational attributes so the reader stylesheet fully controls
     // typography rather than fighting inline styles.
@@ -724,7 +724,7 @@ const capture = {
 // Main-process command dispatch
 // ===========================================================================
 
-ipcRenderer.on('aether:content-command', async (_event, id, op, payload) => {
+ipcRenderer.on('shaurya:content-command', async (_event, id, op, payload) => {
   let result = null;
   let error = null;
   try {
@@ -746,7 +746,7 @@ ipcRenderer.on('aether:content-command', async (_event, id, op, payload) => {
   } catch (err) {
     error = err.message;
   }
-  ipcRenderer.send('aether:content-reply', id, result, error);
+  ipcRenderer.send('shaurya:content-reply', id, result, error);
 });
 
 // ===========================================================================
@@ -780,7 +780,7 @@ const frameStats = {
     // Only sample while something is watching. The main process turns this on
     // when the overlay or the per-tab metrics panel needs it, so an ordinary
     // browsing session pays nothing at all.
-    ipcRenderer.on('aether:frame-stats', (_event, enabled) => {
+    ipcRenderer.on('shaurya:frame-stats', (_event, enabled) => {
       if (enabled && !this.running) this.start();
       else if (!enabled) this.running = false;
     });
@@ -815,7 +815,7 @@ const frameStats = {
  * Start each subsystem in isolation.
  *
  * An uncaught throw anywhere in a preload aborts the *entire* script, which
- * takes down the privileged `window.aether` bridge at the bottom of this file
+ * takes down the privileged `window.shaurya` bridge at the bottom of this file
  * and leaves every internal page rendering blank with no obvious cause. That
  * has happened once already — a MutationObserver attached before the document
  * existed — so no single subsystem gets to do it again.
@@ -824,7 +824,7 @@ function safely(name, fn) {
   try {
     fn();
   } catch (err) {
-    console.error(`[aether] preload subsystem "${name}" failed to start`, err);
+    console.error(`[shaurya] preload subsystem "${name}" failed to start`, err);
   }
 }
 
@@ -844,19 +844,19 @@ if (document.readyState === 'loading') {
  * two locks rather than the only one.
  */
 if (IS_INTERNAL) {
-  contextBridge.exposeInMainWorld('aether', Object.freeze({
+  contextBridge.exposeInMainWorld('shaurya', Object.freeze({
     invoke: async (channel, payload) => {
-      const result = await ipcRenderer.invoke('aether:invoke', channel, payload);
+      const result = await ipcRenderer.invoke('shaurya:invoke', channel, payload);
       if (result && typeof result === 'object' && '__error' in result) {
         throw new Error(result.__error);
       }
       return result;
     },
-    send: (channel, payload) => ipcRenderer.send('aether:send', channel, payload),
+    send: (channel, payload) => ipcRenderer.send('shaurya:send', channel, payload),
     on: (channel, callback) => {
       const handler = (_e, ch, payload) => { if (ch === channel) callback(payload); };
-      ipcRenderer.on('aether:event', handler);
-      return () => ipcRenderer.off('aether:event', handler);
+      ipcRenderer.on('shaurya:event', handler);
+      return () => ipcRenderer.off('shaurya:event', handler);
     },
     env: Object.freeze({
       platform: process.platform,

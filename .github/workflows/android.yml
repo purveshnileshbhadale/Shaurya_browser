@@ -62,7 +62,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: aether-debug-apk
+          name: shaurya-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
@@ -94,13 +94,13 @@ jobs:
 
           work="$(mktemp -d)"
           mkdir -p "$work/apk"
-          cp "$APK" "$work/apk/aether-debug.apk"
+          cp "$APK" "$work/apk/shaurya-debug.apk"
           printf '%s\n' \
-            '# Aether — debug APK' '' \
+            '# Shaurya — debug APK' '' \
             "Built by the \"Android APK\" workflow from commit \`$GITHUB_SHA\`." '' \
-            '    apk/aether-debug.apk' '' \
+            '    apk/shaurya-debug.apk' '' \
             'Debug-signed, so installing needs "unknown sources" enabled:' '' \
-            '    adb install apk/aether-debug.apk' '' \
+            '    adb install apk/shaurya-debug.apk' '' \
             'This branch is force-pushed on every build and carries no history.' \
             'It is a distribution convenience, not source. Delete it freely.' \
             > "$work/README.md"
@@ -110,6 +110,6 @@ jobs:
           git add -A
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-              commit -q -m "Aether debug APK from ${GITHUB_SHA:0:7}"
+              commit -q -m "Shaurya debug APK from ${GITHUB_SHA:0:7}"
           git push -q --force "$REMOTE" dist:refs/heads/claude/apk-dist
           echo "APK mirrored to branch claude/apk-dist"

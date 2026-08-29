@@ -1,7 +1,7 @@
-package dev.aether.browser.ai
+package dev.shaurya.browser.ai
 
 import android.util.Log
-import dev.aether.browser.data.AetherStore
+import dev.shaurya.browser.data.ShauryaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -28,7 +28,7 @@ import java.net.URL
  * the desktop applies — the system prompt below is deliberately identical in
  * substance.
  */
-class AiClient(private val store: AetherStore) {
+class AiClient(private val store: ShauryaStore) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -172,7 +172,7 @@ class AiClient(private val store: AetherStore) {
 
     companion object {
         const val KEY_ANTHROPIC = "ai.anthropic.key"
-        private const val TAG = "AetherAi"
+        private const val TAG = "ShauryaAi"
 
         /**
          * Kept in step with the desktop prompt. The prompt-injection
@@ -180,7 +180,7 @@ class AiClient(private val store: AetherStore) {
          * text on every request.
          */
         val SYSTEM_PROMPT = """
-            You are Aether's browsing assistant on Android. You help the user understand what is open in their browser.
+            You are Shaurya's browsing assistant on Android. You help the user understand what is open in their browser.
 
             Grounding rules:
             - Page content appears between ---BEGIN PAGE CONTENT--- and ---END PAGE CONTENT--- markers.

@@ -1,4 +1,4 @@
-package dev.aether.browser.media
+package dev.shaurya.browser.media
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -16,8 +16,8 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.media.session.MediaButtonReceiver
-import dev.aether.browser.MainActivity
-import dev.aether.browser.R
+import dev.shaurya.browser.MainActivity
+import dev.shaurya.browser.R
 
 /**
  * Background playback (the mobile half of the desktop `MediaService`).
@@ -42,12 +42,12 @@ import dev.aether.browser.R
 class PlaybackService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "aether.playback"
+        const val CHANNEL_ID = "shaurya.playback"
         const val NOTIFICATION_ID = 0x4145 // 'AE'
 
-        const val ACTION_START = "dev.aether.browser.PLAYBACK_START"
-        const val ACTION_STOP = "dev.aether.browser.PLAYBACK_STOP"
-        const val ACTION_UPDATE = "dev.aether.browser.PLAYBACK_UPDATE"
+        const val ACTION_START = "dev.shaurya.browser.PLAYBACK_START"
+        const val ACTION_STOP = "dev.shaurya.browser.PLAYBACK_STOP"
+        const val ACTION_UPDATE = "dev.shaurya.browser.PLAYBACK_UPDATE"
 
         const val EXTRA_TITLE = "title"
         const val EXTRA_ARTIST = "artist"
@@ -99,7 +99,7 @@ class PlaybackService : Service() {
         super.onCreate()
         createChannel()
 
-        session = MediaSessionCompat(this, "AetherPlayback").apply {
+        session = MediaSessionCompat(this, "ShauryaPlayback").apply {
             setCallback(object : MediaSessionCompat.Callback() {
                 override fun onPlay() { Companion.onPlay?.invoke() }
                 override fun onPause() { Companion.onPause?.invoke() }
@@ -185,7 +185,7 @@ class PlaybackService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(title.ifBlank { "Playing in Aether" })
+            .setContentTitle(title.ifBlank { "Playing in Shaurya" })
             .setContentText(artist)
             .setContentIntent(open)
             .addAction(toggle)
@@ -230,7 +230,7 @@ class PlaybackService : Service() {
             // something is *already* making sound.
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Controls for audio and video playing in Aether"
+            description = "Controls for audio and video playing in Shaurya"
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)

@@ -1,4 +1,4 @@
-package dev.aether.browser.ui
+package dev.shaurya.browser.ui
 
 import android.os.Build
 import android.provider.Settings
@@ -44,7 +44,7 @@ val LocalReducedMotion = staticCompositionLocalOf { false }
  * 3. **The brand accent**, when the stored one is unreadable.
  */
 @Composable
-fun AetherTheme(
+fun ShauryaTheme(
     accent: String = "#6C8CFF",
     themeMode: String = "system",
     useDynamicColor: Boolean = true,
@@ -69,7 +69,7 @@ fun AetherTheme(
     }
 
     CompositionLocalProvider(LocalReducedMotion provides reducedMotion) {
-        MaterialTheme(colorScheme = scheme, typography = AetherTypography, content = content)
+        MaterialTheme(colorScheme = scheme, typography = ShauryaTypography, content = content)
     }
 }
 
@@ -171,7 +171,7 @@ fun brandedScheme(seed: Int, dark: Boolean): ColorScheme {
  * while scrolling a tab grid, so they are set slightly tighter and heavier
  * than Material's defaults, which are tuned for prose.
  */
-private val AetherTypography = Typography().let { base ->
+private val ShauryaTypography = Typography().let { base ->
     base.copy(
         titleMedium = base.titleMedium.copy(
             fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp,

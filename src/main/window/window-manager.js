@@ -7,7 +7,7 @@
  * window", which goes wrong the moment a background window fires a timer.
  */
 const EventEmitter = require('node:events');
-const { AetherWindow } = require('./browser-window');
+const { ShauryaWindow } = require('./browser-window');
 const { createLogger } = require('../util/logger');
 
 const log = createLogger('windows');
@@ -16,7 +16,7 @@ class WindowManager extends EventEmitter {
   constructor(deps) {
     super();
     this.deps = deps;
-    /** @type {Map<string, AetherWindow>} */
+    /** @type {Map<string, ShauryaWindow>} */
     this.windows = new Map();
     this.lastFocusedId = null;
   }
@@ -43,7 +43,7 @@ class WindowManager extends EventEmitter {
       incognitoProfileId = this.deps.profiles.createIncognito().id;
     }
 
-    const win = new AetherWindow(this.deps, { ...opts, incognitoProfileId });
+    const win = new ShauryaWindow(this.deps, { ...opts, incognitoProfileId });
     this.windows.set(win.id, win);
 
     win.on('focus', () => { this.lastFocusedId = win.id; });

@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
-package dev.aether.browser.ui
+package dev.shaurya.browser.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,9 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.aether.browser.data.Bookmark
-import dev.aether.browser.data.HistoryEntry
-import dev.aether.browser.data.Settings
+import dev.shaurya.browser.data.Bookmark
+import dev.shaurya.browser.data.HistoryEntry
+import dev.shaurya.browser.data.Settings
 
 /** One row of a saved-pages list. */
 @Composable

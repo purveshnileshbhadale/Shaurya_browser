@@ -46,9 +46,9 @@ let modeSwitcher = null;
     toolbar = createToolbar({ container: toolbarEl });
     panel = createPanel({ container: panelEl });
     // Panels are reachable from the mode switcher's quick actions and from
-    // aether:// pages, so the instance is published rather than passed
+    // shaurya:// pages, so the instance is published rather than passed
     // through four layers of arguments.
-    window.aetherPanels = panel;
+    window.shauryaPanels = panel;
 
     wireShellChrome();
     wireKeyboard();
@@ -58,14 +58,14 @@ let modeSwitcher = null;
 
     // First run goes straight to onboarding (spec §9).
     if (!initial.onboarding?.completed) {
-      invoke('tabs.navigate', { url: 'aether://onboarding' });
+      invoke('tabs.navigate', { url: 'shaurya://onboarding' });
     }
 
     send('ui.ready', {});
   } catch (err) {
-    console.error('[aether] failed to start', err);
+    console.error('[shaurya] failed to start', err);
     document.body.appendChild(h('div.toast', { dataset: { tone: 'error' } },
-      `Aether failed to start: ${err.message}`));
+      `Shaurya failed to start: ${err.message}`));
   }
 }());
 
@@ -79,7 +79,7 @@ function wireShellChrome() {
   head.append(
     h('button.workspace-switch', {
       onclick: (e) => openWorkspaceMenu(e.currentTarget),
-    }, h('span.workspace-dot'), h('span.truncate', { text: 'Aether' }),
+    }, h('span.workspace-dot'), h('span.truncate', { text: 'Shaurya' }),
        icon('chevronDown')),
     h('button.icon-btn', {
       title: 'New tab',
@@ -120,7 +120,7 @@ function wireShellChrome() {
     }, icon('split')),
     h('button.icon-btn', {
       title: 'Settings',
-      onclick: () => invoke('tabs.create', { url: 'aether://settings' }),
+      onclick: () => invoke('tabs.create', { url: 'shaurya://settings' }),
     }, icon('sliders')));
 
   // --- sidebar resize ---
@@ -310,7 +310,7 @@ function wireKeyboard() {
     runCommand(command.id);
   });
 
-  window.addEventListener('aether:command', (event) => runCommand(event.detail.id));
+  window.addEventListener('shaurya:command', (event) => runCommand(event.detail.id));
 }
 
 /** Commands that must work even while a text field has focus. */
@@ -408,7 +408,7 @@ async function runCommand(id) {
     case 'nav.reload': return invoke('tabs.reload', {});
     case 'nav.hardReload': return invoke('tabs.reload', { hard: true });
     case 'nav.stop': return invoke('tabs.stop', {});
-    case 'nav.home': return invoke('tabs.navigate', { url: 'aether://start' });
+    case 'nav.home': return invoke('tabs.navigate', { url: 'shaurya://start' });
     case 'nav.focusAddress': return toolbar.focusAddressBar();
 
     // --- interface ---
@@ -488,9 +488,9 @@ async function runCommand(id) {
     case 'bookmark.add':
       await invoke('bookmarks.add', {});
       return toast('Bookmarked', 'success');
-    case 'history.open': return invoke('tabs.create', { url: 'aether://settings/#history' });
-    case 'downloads.open': return invoke('tabs.create', { url: 'aether://settings/#downloads' });
-    case 'settings.open': return invoke('tabs.create', { url: 'aether://settings' });
+    case 'history.open': return invoke('tabs.create', { url: 'shaurya://settings/#history' });
+    case 'downloads.open': return invoke('tabs.create', { url: 'shaurya://settings/#downloads' });
+    case 'settings.open': return invoke('tabs.create', { url: 'shaurya://settings' });
     case 'session.save': {
       const name = prompt('Name this session');
       if (!name) return null;
@@ -554,21 +554,21 @@ async function toggleResponsive() {
 
 async function startColorPicker() {
   toast('Click anywhere on the page to sample a colour');
-  window.dispatchEvent(new CustomEvent('aether:colorpicker'));
+  window.dispatchEvent(new CustomEvent('shaurya:colorpicker'));
 }
 
 function startCapture(mode) {
-  window.dispatchEvent(new CustomEvent('aether:capture-start', { detail: { mode } }));
+  window.dispatchEvent(new CustomEvent('shaurya:capture-start', { detail: { mode } }));
 }
 
 function openAnnotator(shot) {
-  window.dispatchEvent(new CustomEvent('aether:annotate', { detail: shot }));
+  window.dispatchEvent(new CustomEvent('shaurya:annotate', { detail: shot }));
 }
 
 function openPalette() {
   // The palette lives in the overlay view so it can cover page content.
   send('ui.contextMenu', { kind: 'palette' });
-  window.dispatchEvent(new CustomEvent('aether:open-palette'));
+  window.dispatchEvent(new CustomEvent('shaurya:open-palette'));
 }
 
 // ---------------------------------------------------------------------------
@@ -576,13 +576,13 @@ function openPalette() {
 // ---------------------------------------------------------------------------
 
 function wireEventBridges() {
-  window.addEventListener('aether:panel', (event) => panel.open(event.detail.kind));
+  window.addEventListener('shaurya:panel', (event) => panel.open(event.detail.kind));
 
-  window.addEventListener('aether:popover', (event) => {
+  window.addEventListener('shaurya:popover', (event) => {
     renderPopover(event.detail.kind, event.detail.anchor);
   });
 
-  window.addEventListener('aether:tabmenu', (event) => {
+  window.addEventListener('shaurya:tabmenu', (event) => {
     renderTabMenu(event.detail);
   });
 
@@ -685,7 +685,7 @@ async function renderVpnPopover(anchor) {
   const regions = await invoke('vpn.regions', {}, { quiet: true }).catch(() => []);
 
   popoverAt(anchor, [
-    h('div.popover-head', { text: 'Aether VPN' }),
+    h('div.popover-head', { text: 'Shaurya VPN' }),
     h('div.stat-row', {}, h('span', { text: 'Status' }),
       h('span.value', { text: status?.status || 'disconnected' })),
     status?.scope && h('div.stat-row', {}, h('span', { text: 'Protects' }),

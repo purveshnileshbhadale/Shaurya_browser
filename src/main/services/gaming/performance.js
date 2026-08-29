@@ -108,7 +108,7 @@ class PerformanceService extends EventEmitter {
     for (const win of this.windowManager?.list() || []) {
       for (const tab of win.tabs.list()) {
         try {
-          tab.webContents?.send('aether:frame-stats', enabled);
+          tab.webContents?.send('shaurya:frame-stats', enabled);
         } catch { /* a view mid-teardown */ }
       }
     }

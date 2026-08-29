@@ -59,7 +59,7 @@ class DepWatchService extends EventEmitter {
     if (!this.features.enabled('depWatch')) throw new Error('the dependency watcher is off');
 
     const spec = DepWatchService.recognise(filename);
-    if (!spec) throw new Error(`${filename} is not a manifest Aether reads`);
+    if (!spec) throw new Error(`${filename} is not a manifest Shaurya reads`);
 
     let deps;
     try {

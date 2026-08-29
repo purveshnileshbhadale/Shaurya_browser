@@ -2,7 +2,7 @@
 /**
  * WireGuard tunnel control.
  *
- * Aether does not reimplement WireGuard: it generates a standard
+ * Shaurya does not reimplement WireGuard: it generates a standard
  * configuration and drives the platform's own tooling (`wg-quick` on
  * Linux/macOS, the WireGuard service on Windows). That means the data path
  * is the audited kernel/userspace implementation, and the browser only ever

@@ -10,7 +10,7 @@
  *     already constrained, and for the same reason: a capability this sharp
  *     must not be one settings toggle away from an ordinary browsing profile.
  *  2. **Never reachable from page content.** The terminal is driven only from
- *     the privileged chrome channel. `aether:content`, which a compromised web
+ *     the privileged chrome channel. `shaurya:content`, which a compromised web
  *     renderer can reach, has no terminal verbs at all.
  *  3. **Explicitly opened, per session, with a visible indicator.** Sessions do
  *     not persist across a restart and are killed when the panel closes.
@@ -102,7 +102,7 @@ class TerminalService extends EventEmitter {
         // cannot render without a PTY.
         TERM: 'dumb',
         NO_COLOR: '1',
-        AETHER_TERMINAL: '1',
+        SHAURYA_TERMINAL: '1',
       },
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
@@ -136,7 +136,7 @@ class TerminalService extends EventEmitter {
       setTimeout(() => this.sessions.delete(id), 30_000).unref?.();
     });
     child.on('error', (err) => {
-      this.emit('data', { id, stream: 'stderr', text: `\n[aether] ${err.message}\n` });
+      this.emit('data', { id, stream: 'stderr', text: `\n[shaurya] ${err.message}\n` });
     });
 
     log.info(`terminal ${id} started: ${command} (pid ${child.pid}, cwd ${workingDir})`);

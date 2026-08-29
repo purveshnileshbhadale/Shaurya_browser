@@ -15,7 +15,7 @@ const { createLogger } = require('../util/logger');
 const log = createLogger('omnibox');
 
 /** Schemes we will navigate to directly. */
-const KNOWN_SCHEMES = /^(https?|ftp|file|aether|chrome-extension|data|blob|mailto|view-source):/i;
+const KNOWN_SCHEMES = /^(https?|ftp|file|shaurya|chrome-extension|data|blob|mailto|view-source):/i;
 
 /** A conservative list; anything else needs a dot-plus-known-TLD shape. */
 const COMMON_TLDS = new Set([
@@ -42,7 +42,7 @@ class SearchService extends EventEmitter {
    */
   resolve(input) {
     const raw = String(input || '').trim();
-    if (!raw) return { kind: 'url', url: 'aether://start', display: '' };
+    if (!raw) return { kind: 'url', url: 'shaurya://start', display: '' };
 
     // An explicit scheme is decisive.
     if (KNOWN_SCHEMES.test(raw)) {
@@ -121,7 +121,7 @@ class SearchService extends EventEmitter {
     // Already-open tabs first: switching beats opening a duplicate.
     const lower = raw.toLowerCase();
     for (const tab of openTabs) {
-      if (!tab.url || tab.url.startsWith('aether://start')) continue;
+      if (!tab.url || tab.url.startsWith('shaurya://start')) continue;
       const hay = `${tab.title} ${tab.url}`.toLowerCase();
       if (!hay.includes(lower)) continue;
       out.push({

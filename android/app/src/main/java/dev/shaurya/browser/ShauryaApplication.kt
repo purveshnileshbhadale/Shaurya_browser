@@ -1,4 +1,4 @@
-package dev.aether.browser
+package dev.shaurya.browser
 
 import android.app.Application
 import android.os.Build
@@ -11,7 +11,7 @@ import android.webkit.WebView
  * process its own WebView data directory. Without it, a second process
  * touching WebView throws and takes the app down.
  */
-class AetherApplication : Application() {
+class ShauryaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

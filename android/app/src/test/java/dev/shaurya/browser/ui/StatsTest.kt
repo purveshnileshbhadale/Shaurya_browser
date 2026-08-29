@@ -1,4 +1,4 @@
-package dev.aether.browser.ui
+package dev.shaurya.browser.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

@@ -184,7 +184,7 @@ async function bootstrap() {
   protocolService.installHandler(container);
 
   // Every profile session — including incognito contexts created later —
-  // gets the same protections attached, in a fixed order. The `aether://`
+  // gets the same protections attached, in a fixed order. The `shaurya://`
   // handler goes on first: a page that cannot load has nothing to protect.
   container.profiles.addConfigurator((sess, profile) => {
     protocolService.installHandler(container, sess);

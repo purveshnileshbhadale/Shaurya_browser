@@ -1,4 +1,4 @@
-package dev.aether.browser.adblock
+package dev.shaurya.browser.adblock
 
 /**
  * Ad and tracker blocking for Android (spec §6 parity).

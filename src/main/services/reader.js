@@ -4,7 +4,7 @@
  *
  * Extraction happens in the page (content preload) because it needs the
  * rendered DOM; this service caches results per tab, decides whether reader
- * mode is even offered, and hands the article to `aether://reader`.
+ * mode is even offered, and hands the article to `shaurya://reader`.
  */
 const EventEmitter = require('node:events');
 const { createLogger } = require('../util/logger');
@@ -79,14 +79,14 @@ class ReaderService extends EventEmitter {
 
     this._origins.set(tab.id, tab.url);
     tab.readerMode = true;
-    await tab.navigate(`aether://reader/?tab=${encodeURIComponent(tab.id)}`);
+    await tab.navigate(`shaurya://reader/?tab=${encodeURIComponent(tab.id)}`);
     // `navigate` resets readerMode on commit, so re-assert it after.
     tab.readerMode = true;
     this.emit('state', { tabId: tab.id, readerMode: true });
     return { readerMode: true };
   }
 
-  /** Used by the `aether://api/reader` endpoint. */
+  /** Used by the `shaurya://api/reader` endpoint. */
   get(tabId) {
     return this._articles.get(tabId) || null;
   }

@@ -130,7 +130,7 @@ class OverlayService extends EventEmitter {
     this.window.contentView.addChildView(this.view);
     this.view.setBounds({ x: 0, y: 0, width, height });
     this.view.setBackgroundColor('#00000000');
-    this.view.webContents.loadURL('aether://hud');
+    this.view.webContents.loadURL('shaurya://hud');
 
     // Feed it real numbers from the performance sampler.
     this.performance.start();
@@ -230,7 +230,7 @@ class OverlayService extends EventEmitter {
  * "By game" is inferred from the window title at capture time, which is the
  * only signal available without a platform integration — and it is a good
  * one, because game windows are named after the game. Files are grouped
- * under a folder per title, so the organisation survives outside Aether too.
+ * under a folder per title, so the organisation survives outside Shaurya too.
  */
 class GalleryService extends EventEmitter {
   constructor({ settings, features }) {

@@ -2,7 +2,7 @@
 /**
  * Keyboard-first navigation with a fully remappable scheme (spec §5).
  *
- * Every command in Aether is reachable from here, and every binding can be
+ * Every command in Shaurya is reachable from here, and every binding can be
  * changed. Two design points:
  *
  *  - Accelerators are stored in Electron's platform-neutral form

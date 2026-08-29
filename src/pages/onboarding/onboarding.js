@@ -7,7 +7,7 @@
  * anywhere, and the developer step turns real features on.
  */
 
-const api = window.aether;
+const api = window.shaurya;
 
 const stage = document.getElementById('stage');
 const dots = document.getElementById('dots');
@@ -80,7 +80,7 @@ const steps = [
     id: 'welcome',
     render: () => step({
       icon: 'sparkle',
-      title: 'Welcome to Aether',
+      title: 'Welcome to Shaurya',
       lede: 'A Chromium browser that blocks trackers at the network layer, keeps an '
         + 'assistant beside your tabs, and ships the tools you would otherwise install '
         + 'four extensions for.',
@@ -103,7 +103,7 @@ const steps = [
     render: () => step({
       icon: 'shuffle',
       title: 'What are you here to do?',
-      lede: 'Aether reconfigures itself around the work in front of you. Pick a starting '
+      lede: 'Shaurya reconfigures itself around the work in front of you. Pick a starting '
         + 'point — the switcher in the sidebar changes it any time, without closing a '
         + 'single tab.',
       body: [purposeGrid()],
@@ -189,7 +189,7 @@ const steps = [
             default: true },
           { key: 'splitView', title: 'Split screen',
             note: 'Two tabs side by side with a draggable divider.', default: true },
-          { key: 'vpn', title: 'Aether VPN',
+          { key: 'vpn', title: 'Shaurya VPN',
             note: 'WireGuard tunnel with a kill switch. Free tier is bandwidth-capped.',
             default: false },
           { key: 'sync', title: 'Encrypted sync',
@@ -363,7 +363,7 @@ async function finish() {
   } catch (err) {
     console.error('could not save onboarding choices', err);
   }
-  await api.invoke('tabs.navigate', { url: 'aether://start' });
+  await api.invoke('tabs.navigate', { url: 'shaurya://start' });
 }
 
 // ---------------------------------------------------------------------------

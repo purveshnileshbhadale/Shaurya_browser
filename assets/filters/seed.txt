@@ -1,5 +1,5 @@
 [Adblock Plus 2.0]
-! Title: Aether seed list
+! Title: Shaurya seed list
 ! Description: A small, bundled starter list.
 !
 ! This exists so that a fresh install is not defenceless. The real

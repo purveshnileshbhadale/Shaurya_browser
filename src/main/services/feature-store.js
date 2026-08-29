@@ -29,7 +29,7 @@ const CATALOG = [
   { id: 'adblock', name: 'Ad & Tracker Blocking', category: 'Privacy',
     description: 'Network-layer filtering with auto-updating EasyList/EasyPrivacy rules.',
     default: true, cost: 'light', costNote: '~40 MB resident for the compiled rule index' },
-  { id: 'vpn', name: 'Aether VPN', category: 'Privacy',
+  { id: 'vpn', name: 'Shaurya VPN', category: 'Privacy',
     description: 'WireGuard tunnel with kill switch. Free tier is bandwidth-capped.',
     default: false, cost: 'moderate', costNote: 'Adds a background tunnel process' },
   { id: 'passwords', name: 'Password Manager', category: 'Privacy',
@@ -88,7 +88,7 @@ const CATALOG = [
 
   // ---- Developer -------------------------------------------------------
   { id: 'devtools', name: 'Developer Tools', category: 'Developer',
-    description: 'Full Chrome DevTools plus the Aether dev panels.',
+    description: 'Full Chrome DevTools plus the Shaurya dev panels.',
     default: true, cost: 'light' },
   { id: 'httpClient', name: 'REST Client', category: 'Developer',
     description: 'Sidebar HTTP client with saved collections and timing.',

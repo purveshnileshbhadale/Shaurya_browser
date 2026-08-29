@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-process.env.AETHER_USER_DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'aether-ext-'));
+process.env.SHAURYA_USER_DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'shaurya-ext-'));
 const { ExtensionService } = require('../src/main/services/extensions');
 
 /** Build a throwaway extension directory. */

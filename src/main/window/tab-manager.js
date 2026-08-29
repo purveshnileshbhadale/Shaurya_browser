@@ -71,7 +71,7 @@ class TabManager extends EventEmitter {
     const tab = new Tab({
       session,
       profileId: targetProfile,
-      url: url || 'aether://start',
+      url: url || 'shaurya://start',
       groupId: groupId ?? (this.activeId ? this.tabs.get(this.activeId)?.groupId ?? null : null),
       pinned,
       id,
@@ -89,7 +89,7 @@ class TabManager extends EventEmitter {
 
     if (!background) this.activate(tab.id);
     if (url) tab.navigate(url);
-    else tab.navigate('aether://start');
+    else tab.navigate('shaurya://start');
 
     return tab;
   }
@@ -156,7 +156,7 @@ class TabManager extends EventEmitter {
       const next = this.order[idx] || this.order[idx - 1] || null;
       this.activeId = null;
       if (next) this.activate(next);
-      else if (!force) this.create({ url: 'aether://start' });
+      else if (!force) this.create({ url: 'shaurya://start' });
     }
 
     this.emit('closed', { id });
@@ -388,7 +388,7 @@ class TabManager extends EventEmitter {
     this.activeWorkspaceId = id;
     const visible = this.order.filter((tid) => this._inWorkspace(tid, id));
     if (visible.length === 0) {
-      this.create({ url: 'aether://start' });
+      this.create({ url: 'shaurya://start' });
     } else if (!visible.includes(this.activeId)) {
       this.activate(visible[0]);
     }

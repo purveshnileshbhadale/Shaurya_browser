@@ -247,7 +247,7 @@ class DealsService extends EventEmitter {
     if (cached && Date.now() - cached.at < CACHE_MS) return cached.body;
 
     const response = await fetchImpl(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'Aether-Browser' },
+      headers: { Accept: 'application/json', 'User-Agent': 'Shaurya-Browser' },
     });
     if (!response.ok) throw new Error(`CheapShark returned ${response.status}`);
     const body = await response.json();

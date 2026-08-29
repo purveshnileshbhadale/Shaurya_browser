@@ -5,7 +5,7 @@
  * The data model is a subset of CSL-JSON, the format Zotero and Pandoc
  * already speak, so a captured library can leave this browser without a
  * conversion step. Inventing a bespoke shape would trap a student's
- * bibliography inside Aether, which is the opposite of useful for the one
+ * bibliography inside Shaurya, which is the opposite of useful for the one
  * user group whose work has to be portable by definition.
  *
  * The three styles implemented are the ones actually assigned: APA 7th, MLA

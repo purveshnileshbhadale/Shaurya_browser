@@ -160,7 +160,7 @@ class ScreenshotService extends EventEmitter {
 
     const { canceled, filePath } = await dialog.showSaveDialog({
       title: 'Save screenshot',
-      defaultPath: path.join(app.getPath('pictures'), suggestedName || 'aether-capture.png'),
+      defaultPath: path.join(app.getPath('pictures'), suggestedName || 'shaurya-capture.png'),
       filters: [{ name: 'PNG image', extensions: ['png'] }],
     });
     if (canceled || !filePath) return { saved: false };
@@ -185,7 +185,7 @@ function suggestName(tab) {
   try {
     host = new URL(tab.url).hostname.replace(/^www\./, '');
   } catch { /* internal page */ }
-  return `aether-${host}-${stamp}.png`.replace(/[^\w.-]/g, '_');
+  return `shaurya-${host}-${stamp}.png`.replace(/[^\w.-]/g, '_');
 }
 
 function delay(ms) {

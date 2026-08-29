@@ -1,18 +1,18 @@
 'use strict';
 /**
- * The `aether://` scheme that serves Aether's own pages (start page,
+ * The `shaurya://` scheme that serves Shaurya's own pages (start page,
  * settings, onboarding, notes, reader, JSON viewer, error pages).
  *
  * Using a registered privileged scheme rather than `file://` matters:
  *
  *   - `file://` pages share one origin, so the start page and any local HTML
- *     the user opens could read each other's storage. `aether://` pages get
+ *     the user opens could read each other's storage. `shaurya://` pages get
  *     a real, isolated origin per host.
  *   - It gives us a stable, spoof-resistant thing to show in the address bar.
  *   - It lets us keep `webSecurity` on everywhere.
  *
  * Every path is resolved and then checked to still be inside its page root,
- * so a crafted `aether://settings/../../../etc/passwd` cannot escape.
+ * so a crafted `shaurya://settings/../../../etc/passwd` cannot escape.
  */
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
@@ -23,7 +23,7 @@ const { createLogger } = require('../util/logger');
 
 const log = createLogger('protocol');
 
-const SCHEME = 'aether';
+const SCHEME = 'shaurya';
 
 /** host -> directory under src/pages */
 const PAGE_ROOTS = {
@@ -94,9 +94,9 @@ const SHARED_ROOTS = {
  *
  * This is per-session on purpose, and it is easy to get wrong: the global
  * `protocol` module is an alias for `session.defaultSession.protocol`, so a
- * handler registered there is invisible to every partitioned session. Aether
+ * handler registered there is invisible to every partitioned session. Shaurya
  * loads every tab in a profile partition, so registering only on the default
- * session makes every `aether://` page fail with ERR_FAILED and no
+ * session makes every `shaurya://` page fail with ERR_FAILED and no
  * explanation. The profile service calls this for each session it creates.
  *
  * @param {object} deps                     service container
@@ -137,7 +137,7 @@ function installHandler(deps, targetSession) {
     // --- page bundles ----------------------------------------------------
     const dir = PAGE_ROOTS[host];
     if (!dir) {
-      return new Response(`Unknown Aether page: ${host}`, {
+      return new Response(`Unknown Shaurya page: ${host}`, {
         status: 404,
         headers: { 'content-type': 'text/plain; charset=utf-8' },
       });
@@ -185,7 +185,7 @@ async function serveFile(root, relative, confineTo) {
   }
 }
 
-/** `aether://api/...` — small read-only JSON endpoints for internal pages. */
+/** `shaurya://api/...` — small read-only JSON endpoints for internal pages. */
 async function handleApi(pathname, url, deps) {
   const json = (data, status = 200) => new Response(JSON.stringify(data), {
     status,
@@ -201,7 +201,7 @@ async function handleApi(pathname, url, deps) {
 
       case '/version':
         return json({
-          aether: require(paths.appPath('package.json')).version,
+          shaurya: require(paths.appPath('package.json')).version,
           chromium: process.versions.chrome,
           node: process.versions.node,
           v8: process.versions.v8,
@@ -237,7 +237,7 @@ async function handleApi(pathname, url, deps) {
 }
 
 /**
- * Build an `aether://error/...` URL carrying enough detail for the error
+ * Build an `shaurya://error/...` URL carrying enough detail for the error
  * page to explain itself without a round trip.
  */
 function errorUrl({ code, description, url, kind = 'network' }) {
@@ -247,7 +247,7 @@ function errorUrl({ code, description, url, kind = 'network' }) {
     url: url || '',
     kind,
   });
-  return `aether://error/?${params.toString()}`;
+  return `shaurya://error/?${params.toString()}`;
 }
 
 module.exports = { registerScheme, installHandler, errorUrl, SCHEME, PAGE_ROOTS };

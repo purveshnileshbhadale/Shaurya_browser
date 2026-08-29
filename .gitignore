@@ -3,7 +3,7 @@ dist/
 out/
 *.log
 .DS_Store
-.aether-profile/
+.shaurya-profile/
 userdata/
 filters/*.txt
 !filters/.gitkeep

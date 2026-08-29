@@ -11,7 +11,7 @@
         resolved theme instead, which is the only place that knows whether
         "system" currently means dark.
     -->
-    <style name="Theme.Aether" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.Shaurya" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">@color/launch_background</item>

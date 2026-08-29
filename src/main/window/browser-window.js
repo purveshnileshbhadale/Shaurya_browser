@@ -1,6 +1,6 @@
 'use strict';
 /**
- * AetherWindow — one browser window.
+ * ShauryaWindow — one browser window.
  *
  * Built on `BaseWindow` rather than `BrowserWindow` so that the chrome and
  * every page are siblings in one view tree. The z-order is deliberate:
@@ -27,7 +27,7 @@ const log = createLogger('window');
 
 /** Native window-control strategy per platform (spec §2). */
 
-class AetherWindow extends EventEmitter {
+class ShauryaWindow extends EventEmitter {
   /**
    * @param {object} deps  the service container from bootstrap.js
    * @param {object} opts
@@ -64,7 +64,7 @@ class AetherWindow extends EventEmitter {
       minWidth: 480,
       minHeight: 360,
       show: false,
-      title: this.incognito ? 'Aether — Private' : 'Aether',
+      title: this.incognito ? 'Shaurya — Private' : 'Shaurya',
       ...platformChrome.windowOptions(colors, {
         // An app-mode (PWA) window keeps its native frame, and a framed
         // window cannot host a backdrop material.
@@ -209,20 +209,20 @@ class AetherWindow extends EventEmitter {
     if (opts.session) {
       this.tabs.restore(opts.session);
     } else {
-      this.tabs.create({ url: opts.url || 'aether://start', profileId });
+      this.tabs.create({ url: opts.url || 'shaurya://start', profileId });
     }
   }
 
   /**
-   * Internal `aether://` pages need the privileged IPC surface; web pages
+   * Internal `shaurya://` pages need the privileged IPC surface; web pages
    * must never have it. Trust is re-evaluated on every main-frame commit, so
-   * a tab that navigates from `aether://settings` to a website loses it in
+   * a tab that navigates from `shaurya://settings` to a website loses it in
    * the same instant the new document commits.
    */
   _syncTabTrust(tabId, url) {
     const tab = this.tabs.get(tabId);
     if (!tab?.webContents) return;
-    this.deps.ipc.setTrusted(tab.webContents, String(url).startsWith('aether://'));
+    this.deps.ipc.setTrusted(tab.webContents, String(url).startsWith('shaurya://'));
   }
 
   _wireWindowEvents() {
@@ -314,7 +314,7 @@ class AetherWindow extends EventEmitter {
    * command palette, context menus, the screenshot region selector and the
    * colour picker, all of which must draw over page content.
    *
-   * @param {string} route  an `aether://overlay/...` route for the UI
+   * @param {string} route  an `shaurya://overlay/...` route for the UI
    */
   showOverlay(route, payload = {}) {
     if (!this.overlayView) {
@@ -343,7 +343,7 @@ class AetherWindow extends EventEmitter {
     this.overlayView.setVisible(true);
     this.overlayView.webContents.focus();
 
-    const send = () => this.overlayView.webContents.send('aether:event', 'overlay:show', { route, payload });
+    const send = () => this.overlayView.webContents.send('shaurya:event', 'overlay:show', { route, payload });
     if (this.overlayView.webContents.isLoading()) {
       this.overlayView.webContents.once('did-finish-load', send);
     } else {
@@ -473,10 +473,10 @@ class AetherWindow extends EventEmitter {
   /** Push an event to this window's chrome renderer (and overlay). */
   send(channel, payload) {
     if (this.shellView && !this.shellView.webContents.isDestroyed()) {
-      this.shellView.webContents.send('aether:event', channel, payload);
+      this.shellView.webContents.send('shaurya:event', channel, payload);
     }
     if (this.overlayView && !this.overlayView.webContents.isDestroyed()) {
-      this.overlayView.webContents.send('aether:event', channel, payload);
+      this.overlayView.webContents.send('shaurya:event', channel, payload);
     }
   }
 
@@ -499,4 +499,4 @@ class AetherWindow extends EventEmitter {
   }
 }
 
-module.exports = { AetherWindow };
+module.exports = { ShauryaWindow };

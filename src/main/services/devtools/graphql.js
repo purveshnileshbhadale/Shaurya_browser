@@ -25,7 +25,7 @@ const paths = require('../../util/paths');
  * to a size that renders instantly on large schemas.
  */
 const INTROSPECTION = `
-query AetherIntrospection {
+query ShauryaIntrospection {
   __schema {
     queryType { name }
     mutationType { name }

@@ -137,7 +137,7 @@ class ProfileService extends EventEmitter {
   /** Partition string for a profile. `persist:` is what makes it durable. */
   partitionFor(profile) {
     if (profile.kind === 'incognito') return `incognito-${profile.id}`;
-    return `persist:aether-${profile.id}`;
+    return `persist:shaurya-${profile.id}`;
   }
 
   /**
@@ -161,7 +161,7 @@ class ProfileService extends EventEmitter {
     sess.setUserAgent(
       sess.getUserAgent()
         .replace(/ Electron\/[\d.]+/, '')
-        .replace(/ aether-browser\/[\d.]+/i, '')
+        .replace(/ shaurya-browser\/[\d.]+/i, '')
         .replace(/Chrome\/[\d.]+/, `Chrome/${chromeVersion}`)
     );
 

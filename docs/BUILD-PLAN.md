@@ -117,7 +117,7 @@ makes and the one worth checking in review.
 | 3.17 | Student: LMS deadline import | **Done** — ICS, the one integration every LMS shares |
 | 3.18 | Student: focus timer and blocker | **Done** — cancelled at the network layer, not hidden with an overlay |
 | 3.19 | Student: PDF annotation and OCR search | **Partial** — annotations and search are done; no OCR engine bundled (~15 MB WASM), so scanned-only pages need one configured |
-| 3.20 | Student: group study room | **Partial** — pins an existing room; Aether does not host calls (no signalling or TURN infrastructure) |
+| 3.20 | Student: group study room | **Partial** — pins an existing room; Shaurya does not host calls (no signalling or TURN infrastructure) |
 | 3.21 | Ghost: Tor routing | **Done** — real SOCKS5 to a local daemon; **refuses rather than falling back** when none is running |
 | 3.22 | Ghost: metadata stripping | **Done** — JPEG/PNG container walk, image data byte-identical, 10 tests |
 | 3.23 | Ghost: shredder, DoH picker, panic button | **Done** — shredder documents what overwriting cannot promise on an SSD |

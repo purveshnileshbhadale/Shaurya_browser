@@ -133,7 +133,7 @@ class BookmarkService extends EventEmitter {
   async _githubCard(info, token) {
     const headers = {
       accept: 'application/vnd.github+json',
-      'user-agent': 'Aether-Browser',
+      'user-agent': 'Shaurya-Browser',
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     };
     const api = 'https://api.github.com';
@@ -206,7 +206,7 @@ class BookmarkService extends EventEmitter {
 
   async _gitlabCard(info, token) {
     const headers = {
-      'user-agent': 'Aether-Browser',
+      'user-agent': 'Shaurya-Browser',
       ...(token ? { 'private-token': token } : {}),
     };
     const project = encodeURIComponent(`${info.owner}/${info.repo}`);

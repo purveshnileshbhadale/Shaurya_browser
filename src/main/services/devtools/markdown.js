@@ -39,7 +39,7 @@ class MarkdownService extends EventEmitter {
 
   previewUrl(fileUrl) {
     const file = fileUrl.startsWith('file://') ? fileURLToPath(fileUrl) : fileUrl;
-    return `aether://markdown/?file=${encodeURIComponent(file)}`;
+    return `shaurya://markdown/?file=${encodeURIComponent(file)}`;
   }
 
   /**
@@ -298,7 +298,7 @@ function inline(text) {
   const codeSpans = [];
   s = s.replace(/`([^`]+)`/g, (_m, code) => {
     codeSpans.push(code);
-    return ` CODE${codeSpans.length - 1} `;
+    return `\u0000CODE${codeSpans.length - 1}\u0000`;
   });
 
   // Titles are delimited by `&quot;` once the string has been escaped.
@@ -318,7 +318,7 @@ function inline(text) {
     .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,
       (_m, pre, url) => `${pre}<a href="${escapeAttr(url)}">${url}</a>`);
 
-  return s.replace(/ CODE(\d+) /g, (_m, n) => `<code>${codeSpans[Number(n)]}</code>`);
+  return s.replace(/\u0000CODE(\d+)\u0000/g, (_m, n) => `<code>${codeSpans[Number(n)]}</code>`);
 }
 
 /**

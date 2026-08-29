@@ -1,10 +1,10 @@
 {
-  "name": "aether-browser",
-  "productName": "Aether",
+  "name": "shaurya-browser",
+  "productName": "Shaurya",
   "version": "1.0.0",
-  "description": "Aether — a privacy-first, AI-native, developer-focused Chromium browser.",
+  "description": "Shaurya — a privacy-first, AI-native, developer-focused Chromium browser.",
   "license": "MIT",
-  "author": "Aether Browser Project",
+  "author": "Shaurya Browser Project",
   "main": "src/main/index.js",
   "type": "commonjs",
   "engines": {
@@ -22,7 +22,7 @@
   "devDependencies": {
     "electron": "^44.0.0"
   },
-  "aether": {
+  "shaurya": {
     "channel": "stable",
     "chromiumPolicy": "track-upstream-stable"
   },

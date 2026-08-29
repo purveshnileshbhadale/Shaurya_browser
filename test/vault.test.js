@@ -14,8 +14,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 // The vault reaches for Electron's userData path; point it at a temp dir.
-const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aether-vault-'));
-process.env.AETHER_USER_DATA = tmpRoot;
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'shaurya-vault-'));
+process.env.SHAURYA_USER_DATA = tmpRoot;
 
 const { seal, open } = require('../src/main/services/passwords/vault');
 
@@ -62,8 +62,8 @@ test('tampering with the auth tag is detected', () => {
 
 test('a full vault lifecycle keeps the file opaque on disk', async (t) => {
   // Fresh directory so this test owns its vault file.
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aether-vault2-'));
-  process.env.AETHER_USER_DATA = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaurya-vault2-'));
+  process.env.SHAURYA_USER_DATA = dir;
 
   // paths.js memoises the root, so load a private copy of the module graph.
   const modulePath = require.resolve('../src/main/services/passwords/vault');
@@ -125,8 +125,8 @@ test('a full vault lifecycle keeps the file opaque on disk', async (t) => {
 });
 
 test('candidatesFor matches subdomains but not lookalike hosts', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aether-vault3-'));
-  process.env.AETHER_USER_DATA = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaurya-vault3-'));
+  process.env.SHAURYA_USER_DATA = dir;
   delete require.cache[require.resolve('../src/main/services/passwords/vault')];
   delete require.cache[require.resolve('../src/main/util/paths')];
   const { VaultService } = require('../src/main/services/passwords/vault');
@@ -147,8 +147,8 @@ test('candidatesFor matches subdomains but not lookalike hosts', async () => {
 });
 
 test('generated passwords hit the requested length and alphabet', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aether-vault4-'));
-  process.env.AETHER_USER_DATA = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaurya-vault4-'));
+  process.env.SHAURYA_USER_DATA = dir;
   delete require.cache[require.resolve('../src/main/services/passwords/vault')];
   delete require.cache[require.resolve('../src/main/util/paths')];
   const { VaultService } = require('../src/main/services/passwords/vault');

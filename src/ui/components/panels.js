@@ -566,7 +566,7 @@ function renderServers(root) {
       },
       h('span.chip', { text: String(entry.port) }),
       h('span', { text: entry.url }),
-      entry.ours && h('span.chip', { text: 'Aether' })));
+      entry.ours && h('span.chip', { text: 'Shaurya' })));
     }
   }
 

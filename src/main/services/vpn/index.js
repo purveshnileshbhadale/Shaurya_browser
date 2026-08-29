@@ -10,7 +10,7 @@
  *             an elevation prompt.
  *
  *   `browser` The provider's tunnel entered through an authenticated proxy,
- *             applied per Electron session. Covers Aether's traffic only,
+ *             applied per Electron session. Covers Shaurya's traffic only,
  *             needs no elevation, and works everywhere. This is what Opera
  *             and Brave ship as a "browser VPN"; naming it honestly matters,
  *             so the UI says "this window" rather than implying device-wide
@@ -32,7 +32,7 @@ const { createLogger } = require('../../util/logger');
 
 const log = createLogger('vpn');
 
-const TUNNEL_NAME = 'aether0';
+const TUNNEL_NAME = 'shaurya0';
 /** Free tier allowance, enforced client-side and again by the provider. */
 const FREE_MONTHLY_BYTES = 10 * 1024 * 1024 * 1024; // 10 GiB
 
@@ -86,7 +86,7 @@ class VpnService extends EventEmitter {
       // requests would go out over the bare connection. Drop them instead —
       // that is the entire point of a kill switch.
       if (this.state.status === 'connecting' && this.state.mode === 'browser') {
-        if (details.url.startsWith('aether://') || details.url.startsWith('devtools://')) return null;
+        if (details.url.startsWith('shaurya://') || details.url.startsWith('devtools://')) return null;
         return { cancel: true };
       }
       return null;

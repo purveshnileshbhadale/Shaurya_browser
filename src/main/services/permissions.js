@@ -175,7 +175,7 @@ class PermissionService extends EventEmitter {
     if (!origin) return 'deny';
 
     // Internal pages are ours and need no gate.
-    if (origin.startsWith('aether://')) return 'allow';
+    if (origin.startsWith('shaurya://')) return 'allow';
 
     const sessionGrant = this._sessionGrants.get(`${origin}|${permission}`);
     if (typeof sessionGrant === 'boolean') return sessionGrant ? 'allow' : 'deny';

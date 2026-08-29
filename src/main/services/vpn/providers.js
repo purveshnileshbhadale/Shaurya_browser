@@ -7,7 +7,7 @@
  * no-log claim does not depend on trusting the provider with key material —
  * only with not recording traffic metadata.
  *
- * Aether ships with the adapter for its own service plus a BYO adapter so a
+ * Shaurya ships with the adapter for its own service plus a BYO adapter so a
  * user can point the same UI at their own WireGuard server (a Mullvad
  * account, a self-hosted box) without waiting for us to add it.
  */
@@ -43,15 +43,15 @@ const REGIONS = [
  */
 
 /**
- * Aether's own service.
+ * Shaurya's own service.
  *
  * The endpoint is configurable so the same adapter serves staging, self-host
  * and the production service.
  */
-class AetherProvider {
-  constructor({ endpoint = 'https://vpn.aether.dev', token = null } = {}) {
-    this.id = 'aether';
-    this.name = 'Aether VPN';
+class ShauryaProvider {
+  constructor({ endpoint = 'https://vpn.shaurya.dev', token = null } = {}) {
+    this.id = 'shaurya';
+    this.name = 'Shaurya VPN';
     this.endpoint = endpoint.replace(/\/$/, '');
     this.token = token;
   }
@@ -175,14 +175,14 @@ function parseWgConfig(text) {
 
 /** Build the configured provider from settings. */
 function createProvider(settings, token) {
-  const kind = settings.get('vpn.provider') || 'aether';
+  const kind = settings.get('vpn.provider') || 'shaurya';
   if (kind === 'byo') {
     return new ByoProvider({ config: settings.get('vpn.customConfig') });
   }
-  return new AetherProvider({
+  return new ShauryaProvider({
     endpoint: settings.get('vpn.endpoint') || undefined,
     token,
   });
 }
 
-module.exports = { AetherProvider, ByoProvider, createProvider, parseWgConfig, REGIONS };
+module.exports = { ShauryaProvider, ByoProvider, createProvider, parseWgConfig, REGIONS };

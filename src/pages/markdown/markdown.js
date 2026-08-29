@@ -16,7 +16,7 @@ let lastMtime = 0;
 
 async function render({ flash = false } = {}) {
   try {
-    const response = await fetch(`aether://api/markdown?file=${encodeURIComponent(file)}`);
+    const response = await fetch(`shaurya://api/markdown?file=${encodeURIComponent(file)}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const result = await response.json();
     if (result.error) throw new Error(result.error);

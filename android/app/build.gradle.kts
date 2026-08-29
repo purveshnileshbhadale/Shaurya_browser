@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.aether.browser"
+    namespace = "dev.shaurya.browser"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.aether.browser"
+        applicationId = "dev.shaurya.browser"
         minSdk = 26          // WebView features and the crypto APIs below need 26+
         targetSdk = 35
         versionCode = 1

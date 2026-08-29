@@ -40,7 +40,7 @@ function startCountdown() {
   const tick = async () => {
     let state;
     try {
-      const response = await fetch('aether://api/study-timer');
+      const response = await fetch('shaurya://api/study-timer');
       if (!response.ok) return;
       state = await response.json();
     } catch {

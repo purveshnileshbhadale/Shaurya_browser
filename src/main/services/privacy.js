@@ -216,7 +216,7 @@ class PrivacyService extends EventEmitter {
       url,
       host: parsed.hostname,
       scheme: parsed.protocol.replace(':', ''),
-      secure: parsed.protocol === 'https:' || parsed.protocol === 'aether:',
+      secure: parsed.protocol === 'https:' || parsed.protocol === 'shaurya:',
       httpsUpgraded: this.enabled('httpsOnly') && !this.httpsExceptions.has(parsed.hostname),
       fingerprintResistance: this.enabled('fingerprint'),
       gpc: Boolean(this.settings.get('privacy.doNotSell')),

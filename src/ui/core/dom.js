@@ -346,7 +346,7 @@ export function formatRelative(timestamp) {
  *
  * Returns the host *only* — callers render the scheme separately so it can
  * be visually de-emphasised. Including it here too produced
- * `aether://aether://onboarding` in the address bar.
+ * `shaurya://shaurya://onboarding` in the address bar.
  */
 export function displayHost(url) {
   try {

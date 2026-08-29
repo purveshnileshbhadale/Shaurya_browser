@@ -2,7 +2,7 @@
 /**
  * Progressive Web App install and app-window mode (spec §5).
  *
- * Installing a PWA in Aether means three things: remembering the site as an
+ * Installing a PWA in Shaurya means three things: remembering the site as an
  * app, giving it a window without browser chrome, and registering it with
  * the OS so it appears in the launcher/dock like any other application.
  */
@@ -163,9 +163,9 @@ class PwaService extends EventEmitter {
       record.icon ? `Icon=${record.icon}` : '',
       'Terminal=false',
       'Categories=Network;WebBrowser;',
-      `StartupWMClass=aether-${record.id}`,
+      `StartupWMClass=shaurya-${record.id}`,
     ].filter(Boolean).join('\n');
-    await fs.writeFile(path.join(dir, `aether-${record.id}.desktop`), entry + '\n');
+    await fs.writeFile(path.join(dir, `shaurya-${record.id}.desktop`), entry + '\n');
   }
 
   list() {
@@ -183,7 +183,7 @@ class PwaService extends EventEmitter {
     this.store.save();
 
     if (process.platform === 'linux') {
-      const file = path.join(app.getPath('home'), '.local', 'share', 'applications', `aether-${id}.desktop`);
+      const file = path.join(app.getPath('home'), '.local', 'share', 'applications', `shaurya-${id}.desktop`);
       await fs.rm(file, { force: true }).catch(() => {});
     }
     if (record.icon) await fs.rm(record.icon, { force: true }).catch(() => {});

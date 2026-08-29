@@ -44,10 +44,10 @@ class SyncTransport {
       timeout: 30000,
       headers: {
         'content-type': 'application/json',
-        'x-aether-account': proof.account,
-        'x-aether-timestamp': String(proof.timestamp),
-        'x-aether-signature': proof.signature,
-        'x-aether-proof-window': String(PROOF_WINDOW_MS),
+        'x-shaurya-account': proof.account,
+        'x-shaurya-timestamp': String(proof.timestamp),
+        'x-shaurya-signature': proof.signature,
+        'x-shaurya-proof-window': String(PROOF_WINDOW_MS),
       },
       body: payload || undefined,
     });

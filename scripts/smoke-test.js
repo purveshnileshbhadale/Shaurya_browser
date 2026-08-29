@@ -22,7 +22,7 @@ app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('disable-gpu-compositing');
 
 const results = [];
-const OUT_DIR = process.env.AETHER_SMOKE_OUT
+const OUT_DIR = process.env.SHAURYA_SMOKE_OUT
   || path.join(__dirname, '..', 'test-results');
 
 function check(name, fn) {
@@ -58,7 +58,7 @@ async function until(predicate, { timeout = 8000, label = 'condition' } = {}) {
 
 app.whenReady().then(async () => {
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  console.log(`\nAether smoke test — Chromium ${process.versions.chrome}, Electron ${process.versions.electron}\n`);
+  console.log(`\nShaurya smoke test — Chromium ${process.versions.chrome}, Electron ${process.versions.electron}\n`);
 
   const { bootstrap } = require('../src/main/bootstrap');
   const container = await bootstrap();
@@ -108,7 +108,7 @@ app.whenReady().then(async () => {
     const tab = win.tabs.active;
     await until(() => tab.webContents && !tab.webContents.isLoading(),
       { label: 'onboarding to load' });
-    assert(tab.webContents.getURL().startsWith('aether://onboarding'),
+    assert(tab.webContents.getURL().startsWith('shaurya://onboarding'),
       `first run went to ${tab.webContents.getURL()}`);
     const heading = await tab.webContents.executeJavaScript(
       'document.querySelector(".ob h1")?.textContent || ""');
@@ -117,9 +117,9 @@ app.whenReady().then(async () => {
     return heading;
   });
 
-  await check('aether://start renders in a profile partition', async () => {
+  await check('shaurya://start renders in a profile partition', async () => {
     const tab = win.tabs.active;
-    await tab.navigate('aether://start');
+    await tab.navigate('shaurya://start');
     await until(() => tab.webContents && !tab.webContents.isLoading(),
       { label: 'the start page to finish loading' });
     assert(!tab.error, `start page failed: ${JSON.stringify(tab.error)}`);
@@ -145,8 +145,8 @@ app.whenReady().then(async () => {
   });
 
   await check('tabs can be created, reordered and closed', async () => {
-    const a = win.tabs.create({ url: 'aether://settings', background: true });
-    const b = win.tabs.create({ url: 'aether://notes', background: true });
+    const a = win.tabs.create({ url: 'shaurya://settings', background: true });
+    const b = win.tabs.create({ url: 'shaurya://notes', background: true });
     assert(win.tabs.list().length === 3, 'expected three tabs');
 
     win.tabs.move(b.id, 0);
@@ -159,9 +159,9 @@ app.whenReady().then(async () => {
   });
 
   await check('tab groups keep their members contiguous', () => {
-    const t1 = win.tabs.create({ url: 'aether://start', background: true });
-    const spacer = win.tabs.create({ url: 'aether://start', background: true });
-    const t2 = win.tabs.create({ url: 'aether://start', background: true });
+    const t1 = win.tabs.create({ url: 'shaurya://start', background: true });
+    const spacer = win.tabs.create({ url: 'shaurya://start', background: true });
+    const t2 = win.tabs.create({ url: 'shaurya://start', background: true });
 
     const group = win.tabs.createGroup({ name: 'Test group', tabIds: [t1.id, t2.id] });
     const order = win.tabs.order;
@@ -179,7 +179,7 @@ app.whenReady().then(async () => {
   // =======================================================================
 
   await check('split view positions two live panes', async () => {
-    const second = win.tabs.create({ url: 'aether://settings', background: true });
+    const second = win.tabs.create({ url: 'shaurya://settings', background: true });
     win.splitWith(second.id, { ratio: 0.5 });
     await wait(400);
 
@@ -302,7 +302,7 @@ app.whenReady().then(async () => {
     const normalSession = container.profiles.sessionFor(container.profiles.activeId);
     const privateSession = container.profiles.sessionFor(priv.incognitoProfileId);
     assert(privateSession !== normalSession, 'the private window shares the normal session');
-    assert(!privateSession.storagePath || !privateSession.storagePath.includes('aether-default'),
+    assert(!privateSession.storagePath || !privateSession.storagePath.includes('shaurya-default'),
       'the private partition is persistent');
 
     const second = windowManager.create({ incognito: true });
@@ -355,13 +355,13 @@ app.whenReady().then(async () => {
   await check('the localhost manager serves a folder and finds the port', async () => {
     const dir = path.join(OUT_DIR, 'served');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'index.html'), '<h1>served by aether</h1>');
+    fs.writeFileSync(path.join(dir, 'index.html'), '<h1>served by shaurya</h1>');
 
     const record = await container.localServers.start({ root: dir });
     try {
       const response = await fetch(record.url);
       const text = await response.text();
-      assert(text.includes('served by aether'), 'served the wrong content');
+      assert(text.includes('served by shaurya'), 'served the wrong content');
 
       const open = await container.localServers.scanPorts({ ports: [record.port] });
       assert(open.some((p) => p.port === record.port), 'port scan missed our own server');
@@ -511,8 +511,8 @@ app.whenReady().then(async () => {
     const { modes } = container;
     // Three tabs, one of them active and mid-history, so a mode switch has
     // something real to lose if it were touching the tab set at all.
-    const a = win.tabs.create({ url: 'aether://start', background: true });
-    const b = win.tabs.create({ url: 'aether://settings', background: true });
+    const a = win.tabs.create({ url: 'shaurya://start', background: true });
+    const b = win.tabs.create({ url: 'shaurya://settings', background: true });
     await wait(300);
 
     const before = win.tabs.list().map((t) => t.id).join(',');
@@ -565,7 +565,7 @@ app.whenReady().then(async () => {
   });
 
   await check('the custom-mode builder renders and creates a mode', async () => {
-    const tab = win.tabs.create({ url: 'aether://settings#modes', background: false });
+    const tab = win.tabs.create({ url: 'shaurya://settings#modes', background: false });
     await until(() => tab.webContents && !tab.webContents.isLoading(),
       { label: 'the settings page to load' });
     await wait(500);
@@ -611,7 +611,7 @@ app.whenReady().then(async () => {
   });
 
   await check('onboarding asks what the user is here to do', async () => {
-    const tab = win.tabs.create({ url: 'aether://onboarding', background: false });
+    const tab = win.tabs.create({ url: 'shaurya://onboarding', background: false });
     await until(() => tab.webContents && !tab.webContents.isLoading(),
       { label: 'onboarding to load' });
     await wait(400);
@@ -713,20 +713,20 @@ app.whenReady().then(async () => {
 
   await check('the content preload survives and exposes its bridge', async () => {
     // The failure this guards against is quiet and total: one uncaught throw
-    // anywhere in the preload aborts the whole script, so `window.aether`
+    // anywhere in the preload aborts the whole script, so `window.shaurya`
     // never appears and every internal page renders blank — while the tab
     // itself reports a perfectly successful load.
-    const tab = win.tabs.create({ url: 'aether://start', background: true });
+    const tab = win.tabs.create({ url: 'shaurya://start', background: true });
     await until(() => tab.webContents && !tab.webContents.isLoading(),
       { label: 'the start page to load' });
 
     const probe = await tab.webContents.executeJavaScript(`
       (() => ({
-        bridge: typeof window.aether?.invoke === 'function',
-        env: window.aether?.env?.internal === true,
+        bridge: typeof window.shaurya?.invoke === 'function',
+        env: window.shaurya?.env?.internal === true,
       }))()
     `);
-    assert(probe.bridge, 'window.aether.invoke is missing — the preload threw during startup');
+    assert(probe.bridge, 'window.shaurya.invoke is missing — the preload threw during startup');
     assert(probe.env, 'the preload did not mark this document internal');
 
     // And the media watcher specifically, since it is the newest thing to
@@ -741,12 +741,12 @@ app.whenReady().then(async () => {
 
   await check('background play registers and protects a playing tab', async () => {
     const { media } = container;
-    const tab = win.tabs.create({ url: 'aether://start', background: true });
+    const tab = win.tabs.create({ url: 'shaurya://start', background: true });
     await until(() => tab.webContents && !tab.webContents.isLoading(),
       { label: 'the tab to finish loading' });
 
     media.report(tab.id, {
-      playing: true, title: 'Smoke Track', artist: 'Aether', origin: 'https://example.test',
+      playing: true, title: 'Smoke Track', artist: 'Shaurya', origin: 'https://example.test',
     });
 
     const snapshot = media.snapshot();
@@ -773,12 +773,12 @@ app.whenReady().then(async () => {
     // always-on-top windows and the blocker page is a redirect target — so
     // nothing else would catch a missing route or a typo in a script tag.
     const pages = [
-      ['aether://hud', '#hud'],
-      ['aether://teleprompter', '#script'],
-      ['aether://blocked?reason=focus&host=example.com', '#headline'],
+      ['shaurya://hud', '#hud'],
+      ['shaurya://teleprompter', '#script'],
+      ['shaurya://blocked?reason=focus&host=example.com', '#headline'],
     ];
 
-    const tab = win.tabs.create({ url: 'aether://start', background: true });
+    const tab = win.tabs.create({ url: 'shaurya://start', background: true });
     const rendered = [];
 
     for (const [url, selector] of pages) {
@@ -790,7 +790,7 @@ app.whenReady().then(async () => {
       const found = await tab.webContents.executeJavaScript(
         `document.querySelector(${JSON.stringify(selector)}) ? 'ok' : 'missing'`);
       assert(found === 'ok', `${url} did not render ${selector}`);
-      rendered.push(url.split('?')[0].replace('aether://', ''));
+      rendered.push(url.split('?')[0].replace('shaurya://', ''));
     }
 
     // The blocker page must name the host it blocked, or the user cannot
@@ -805,7 +805,7 @@ app.whenReady().then(async () => {
 
   await check('the now-playing bar appears with playback and clears with it', async () => {
     const { media } = container;
-    const tab = win.tabs.create({ url: 'aether://start', background: true });
+    const tab = win.tabs.create({ url: 'shaurya://start', background: true });
     // Let the navigation commit first. A committing document clears the media
     // session of the one it replaced, which is correct — but here it would
     // race the report below, since a real page cannot announce media before
@@ -951,7 +951,7 @@ app.whenReady().then(async () => {
   // =======================================================================
 
   await check('captures a screenshot of the running browser', async () => {
-    win.tabs.active.navigate('aether://start');
+    win.tabs.active.navigate('shaurya://start');
     await wait(900);
     const file = await capture(win, 'main-window');
     assert(fs.statSync(file).size > 5000, 'screenshot looks empty');
@@ -1039,7 +1039,7 @@ function makeJwt() {
   const crypto = require('node:crypto');
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(JSON.stringify({
-    sub: 'smoke', iss: 'aether', exp: Math.floor(Date.now() / 1000) + 3600,
+    sub: 'smoke', iss: 'shaurya', exp: Math.floor(Date.now() / 1000) + 3600,
   })).toString('base64url');
   const signature = crypto.createHmac('sha256', 'k').update(`${header}.${payload}`).digest('base64url');
   return `${header}.${payload}.${signature}`;

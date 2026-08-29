@@ -51,7 +51,7 @@ function registerHandlers(c) {
       adblock: c.adblock.statsForTab(activeTab(ctx)?.webContents?.id),
       onboarding: c.settings.get('onboarding'),
       version: {
-        aether: app.getVersion(),
+        shaurya: app.getVersion(),
         chromium: process.versions.chrome,
         electron: process.versions.electron,
         node: process.versions.node,
@@ -978,10 +978,10 @@ function runPaletteCommand(c, window, { kind, id, url }) {
       window?.tabs.create({ url });
       return { opened: url };
     case 'setting':
-      window?.tabs.create({ url: `aether://settings/#${id}` });
+      window?.tabs.create({ url: `shaurya://settings/#${id}` });
       return { opened: id };
     case 'extension':
-      window?.tabs.create({ url: 'aether://settings/#extensions' });
+      window?.tabs.create({ url: 'shaurya://settings/#extensions' });
       return { opened: id };
     case 'command':
       window?.send('shortcut:invoked', { id });

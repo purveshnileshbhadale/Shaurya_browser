@@ -6,7 +6,7 @@
  * invariants that matter for a browser:
  *
  *  1. Only channels declared in channels.js can ever be handled or invoked.
- *  2. Only *trusted* renderers (the browser chrome and `aether://` internal
+ *  2. Only *trusted* renderers (the browser chrome and `shaurya://` internal
  *     pages) may invoke. A hostile web page that finds a way to call
  *     ipcRenderer must not be able to read the password vault.
  *  3. Handler errors are converted into a serialisable `{ __error }` shape
@@ -37,7 +37,7 @@ class IpcRouter {
    * Grant or revoke trust as a tab navigates.
    *
    * Trust follows the *committed document*, not the WebContents. A tab that
-   * goes from `aether://settings` to `evil.example` keeps the same
+   * goes from `shaurya://settings` to `evil.example` keeps the same
    * WebContents id, so trust granted once and never revoked would hand a web
    * page the vault. This is called on every main-frame commit.
    */
@@ -78,7 +78,7 @@ class IpcRouter {
     if (this._installed) return;
     this._installed = true;
 
-    ipcMain.handle('aether:invoke', async (event, channel, payload) => {
+    ipcMain.handle('shaurya:invoke', async (event, channel, payload) => {
       if (!INVOKE.includes(channel)) {
         log.warn(`rejected undeclared channel "${channel}"`);
         return { __error: 'unknown-channel' };
@@ -97,7 +97,7 @@ class IpcRouter {
       }
     });
 
-    ipcMain.on('aether:send', (event, channel, payload) => {
+    ipcMain.on('shaurya:send', (event, channel, payload) => {
       if (!SEND.includes(channel) || !this.isTrusted(event.sender)) return;
       const fn = this.handlers.get(channel);
       if (fn) {

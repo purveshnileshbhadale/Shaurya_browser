@@ -74,8 +74,8 @@ const UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000; // twice daily, like uBlock
 const RETRY_BASE_MS = 30 * 1000;
 const RETRY_MAX_MS = 30 * 60 * 1000;
 
-/** Requests Aether itself makes must never be filtered. */
-const INTERNAL_SCHEMES = new Set(['aether:', 'devtools:', 'chrome-extension:', 'blob:', 'data:', 'file:']);
+/** Requests Shaurya itself makes must never be filtered. */
+const INTERNAL_SCHEMES = new Set(['shaurya:', 'devtools:', 'chrome-extension:', 'blob:', 'data:', 'file:']);
 
 class AdblockService extends EventEmitter {
   /**
@@ -256,7 +256,7 @@ class AdblockService extends EventEmitter {
         try {
           const res = await request(url, {
             timeout: 30000,
-            headers: { 'User-Agent': 'Aether/1.0 (filter-list-updater)' },
+            headers: { 'User-Agent': 'Shaurya/1.0 (filter-list-updater)' },
           });
           if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
           const text = res.body.toString('utf8');

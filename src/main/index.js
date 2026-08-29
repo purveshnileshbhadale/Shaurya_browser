@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Aether — application entry point.
+ * Shaurya — application entry point.
  *
  * Order matters here in ways Electron enforces:
  *   1. Command-line switches and privileged scheme registration must happen
@@ -22,7 +22,7 @@ const log = createLogger('app');
 
 // One instance owns the profile directory; a second launch focuses the first.
 const gotLock = app.requestSingleInstanceLock();
-if (!gotLock && !process.env.AETHER_ALLOW_MULTI) {
+if (!gotLock && !process.env.SHAURYA_ALLOW_MULTI) {
   log.info('another instance is already running; exiting');
   app.quit();
   process.exit(0);
@@ -51,13 +51,13 @@ app.commandLine.appendSwitch('enable-smooth-scrolling');
 // Running as root (containers, CI) refuses to start without this. It is a
 // deliberate escape hatch for automation only — never taken on a real
 // desktop session, where the sandbox stays fully on.
-if (process.getuid && process.getuid() === 0 && process.env.AETHER_ALLOW_ROOT === '1') {
+if (process.getuid && process.getuid() === 0 && process.env.SHAURYA_ALLOW_ROOT === '1') {
   log.warn('running as root: disabling the Chromium sandbox (automation only)');
   app.commandLine.appendSwitch('no-sandbox');
   app.commandLine.appendSwitch('disable-gpu-sandbox');
 }
 
-app.setAppUserModelId('dev.aether.browser');
+app.setAppUserModelId('dev.shaurya.browser');
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -82,7 +82,7 @@ app.whenReady().then(async () => {
     if (windowManager.count() === 0) windowManager.create();
   });
 
-  log.info(`Aether ready — Chromium ${process.versions.chrome}, Electron ${process.versions.electron}`);
+  log.info(`Shaurya ready — Chromium ${process.versions.chrome}, Electron ${process.versions.electron}`);
 });
 
 app.on('second-instance', (_event, argv) => {

@@ -77,7 +77,7 @@ const METRICS = {
 
 let lastKeys = '';
 
-window.aetherHud?.onMetrics((metrics) => {
+window.shauryaHud?.onMetrics((metrics) => {
   const show = metrics.show?.length ? metrics.show : ['cpu', 'ram', 'fps'];
 
   if (metrics.opacity != null) {

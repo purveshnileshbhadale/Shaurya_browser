@@ -1,4 +1,4 @@
-package dev.aether.browser.ui
+package dev.shaurya.browser.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -66,7 +66,7 @@ fun NewTabPage(
         Spacer(Modifier.height(40.dp))
 
         Text(
-            "Aether",
+            "Shaurya",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -163,7 +163,7 @@ private fun ShieldSummary(blocked: Long, httpsUpgrades: Long) {
     ) {
         Column(Modifier.padding(18.dp)) {
             Text(
-                "Since you installed Aether",
+                "Since you installed Shaurya",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

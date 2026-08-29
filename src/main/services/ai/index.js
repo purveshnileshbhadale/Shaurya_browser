@@ -30,7 +30,7 @@ const log = createLogger('ai');
  * attacker-controlled text on every request, and the tool gate alone stops
  * actions, not bad answers.
  */
-const SYSTEM_PROMPT = `You are Aether's browsing assistant. You help the user understand and work with what is open in their browser.
+const SYSTEM_PROMPT = `You are Shaurya's browsing assistant. You help the user understand and work with what is open in their browser.
 
 Grounding rules:
 - Page content is provided between ---BEGIN PAGE CONTENT--- and ---END PAGE CONTENT--- markers, numbered as SOURCE 1, SOURCE 2, and so on.
@@ -131,7 +131,7 @@ class AiService extends EventEmitter {
   _resolveApiKey() {
     try {
       if (this.vault.unlocked) {
-        const entry = this.vault.list().find((e) => e.origin === 'aether://ai/anthropic');
+        const entry = this.vault.list().find((e) => e.origin === 'shaurya://ai/anthropic');
         if (entry) return this.vault.reveal(entry.id).password;
       }
     } catch (err) {

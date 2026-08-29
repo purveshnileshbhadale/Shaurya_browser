@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Promise wrapper over node:https with the two things Aether always needs:
+ * Promise wrapper over node:https with the two things Shaurya always needs:
  * a hard timeout and a byte cap. Filter lists, breach checks and AI calls
  * all go through here so no single fetch can wedge or balloon the main
  * process.

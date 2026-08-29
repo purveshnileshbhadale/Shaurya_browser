@@ -1,4 +1,4 @@
-package dev.aether.browser.adblock
+package dev.shaurya.browser.adblock
 
 import android.content.Context
 import android.util.Log
@@ -177,7 +177,7 @@ class BlockerService(private val context: Context) {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 20_000
             readTimeout = 30_000
-            setRequestProperty("User-Agent", "Aether-Android/1.0")
+            setRequestProperty("User-Agent", "Shaurya-Android/1.0")
         }
         try {
             if (connection.responseCode != 200) error("HTTP ${connection.responseCode}")
@@ -294,7 +294,7 @@ class BlockerService(private val context: Context) {
     )
 
     companion object {
-        private const val TAG = "AetherBlocker"
+        private const val TAG = "ShauryaBlocker"
         private const val UPDATE_INTERVAL_MS = 12L * 60 * 60 * 1000
 
         /** Bundled starter rules, for before anything has downloaded. */

@@ -1,4 +1,4 @@
-# Aether
+# Shaurya
 
 A Chromium browser that reconfigures itself around what you are doing.
 
@@ -77,7 +77,7 @@ through the same IPC the UI uses, and screenshots it. Latest run:
 38/38 checks passed
 
   ok   bootstrap wires every declared IPC channel — 332 handlers
-  ok   first run opens the onboarding flow — Welcome to Aether
+  ok   first run opens the onboarding flow — Welcome to Shaurya
   ok   ad blocking is attached and the engine is loaded — 112026 rules from 5 lists
   ok   the web-request hub multiplexes every participant
          — 5:focus-blocker, 10:adblock, 20:https-only, 30:vpn-killswitch
@@ -266,11 +266,11 @@ is not reachable from every environment, so CI is the reliable path:
 
 ```
 Push, or run the "Android APK" workflow manually
-  → download the `aether-debug-apk` artifact  (~17 MB, debug-signed)
+  → download the `shaurya-debug-apk` artifact  (~17 MB, debug-signed)
 ```
 
 The same build is also force-pushed to the **`claude/apk-dist`** branch, at
-`apk/aether-debug.apk`. Actions artifacts are served from a short-lived,
+`apk/shaurya-debug.apk`. Actions artifacts are served from a short-lived,
 authenticated blob host that a fair number of corporate and sandboxed networks
 deny outright, and when that happens the artifact is simply un-downloadable —
 the run page lists it and the click fails. The branch is the fallback, reachable
@@ -278,7 +278,7 @@ by anything that can clone:
 
 ```bash
 git fetch origin claude/apk-dist
-git show origin/claude/apk-dist:apk/aether-debug.apk > aether-debug.apk
+git show origin/claude/apk-dist:apk/shaurya-debug.apk > shaurya-debug.apk
 ```
 
 It is rebuilt from an empty history every run, so it never holds more than the
@@ -311,7 +311,7 @@ src/main/          Electron main process
 src/preload/       the three security boundaries (chrome, content, overlay)
 src/ui/
   components/      mode-switcher.js, mode-panels.js — the two registries
-src/pages/         aether:// internal pages, including the HUD and prompter
+src/pages/         shaurya:// internal pages, including the HUD and prompter
 android/           Kotlin/Compose companion
 test/              242 unit tests
 scripts/           smoke test, tooling

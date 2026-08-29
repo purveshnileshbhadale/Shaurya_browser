@@ -173,7 +173,7 @@ export function createToolbar({ container }) {
     display.style.display = 'none';
     inputEl.style.display = '';
     // Show the *whole* URL while editing; the formatted view is for reading.
-    inputEl.value = tab?.url?.startsWith('aether://start') ? '' : (tab?.url || '');
+    inputEl.value = tab?.url?.startsWith('shaurya://start') ? '' : (tab?.url || '');
     inputEl.select();
     state.omnibox.focused = true;
   }
@@ -318,7 +318,7 @@ export function createToolbar({ container }) {
     // Lead icon reflects the real security state of the origin.
     clear(leadIcon);
     leadIcon.className = 'omnibox-lead';
-    if (!tab?.url || tab.url.startsWith('aether://')) {
+    if (!tab?.url || tab.url.startsWith('shaurya://')) {
       leadIcon.appendChild(icon('sparkle'));
     } else if (tab.url.startsWith('https://')) {
       leadIcon.classList.add('secure');
@@ -364,7 +364,7 @@ export function createToolbar({ container }) {
   function renderDisplay(tab) {
     clear(display);
     const url = tab?.url || '';
-    if (!url || url.startsWith('aether://start')) {
+    if (!url || url.startsWith('shaurya://start')) {
       display.appendChild(h('span.omnibox-path', { text: 'Search or enter address' }));
       return;
     }
@@ -405,9 +405,9 @@ function toolbarButton(name, title, onclick, extraClass) {
 }
 
 function togglePanel(kind) {
-  window.dispatchEvent(new CustomEvent('aether:panel', { detail: { kind } }));
+  window.dispatchEvent(new CustomEvent('shaurya:panel', { detail: { kind } }));
 }
 
 function openPopover(kind, anchor) {
-  window.dispatchEvent(new CustomEvent('aether:popover', { detail: { kind, anchor } }));
+  window.dispatchEvent(new CustomEvent('shaurya:popover', { detail: { kind, anchor } }));
 }

@@ -1,13 +1,13 @@
 /**
  * Start page (spec §2).
  *
- * Runs on `aether://start`, which is a real origin with its own storage, so
+ * Runs on `shaurya://start`, which is a real origin with its own storage, so
  * widget state persists per profile without touching the settings document.
  * The speed dial seeds from actual top sites on first run rather than
  * shipping a list of sponsored placeholders.
  */
 
-const api = window.aether;
+const api = window.shaurya;
 
 const dial = document.getElementById('dial');
 const widgets = document.getElementById('widgets');
@@ -38,7 +38,7 @@ let settings = {};
   });
 
   document.getElementById('customise').addEventListener('click', () => {
-    api.invoke('tabs.navigate', { url: 'aether://settings/#startPage' });
+    api.invoke('tabs.navigate', { url: 'shaurya://settings/#startPage' });
   });
 }());
 
@@ -217,7 +217,7 @@ function notesWidget() {
       row.appendChild(el('strong', '', note.title));
       row.append(document.createTextNode(note.excerpt || ''));
       row.addEventListener('click', () =>
-        api.invoke('tabs.navigate', { url: `aether://notes/#${note.id}` }));
+        api.invoke('tabs.navigate', { url: `shaurya://notes/#${note.id}` }));
       body.appendChild(row);
     }
   }).catch(() => {
@@ -327,7 +327,7 @@ function colorFor(url) {
 
 function readStore(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem(`aether.start.${key}`)) ?? fallback;
+    return JSON.parse(localStorage.getItem(`shaurya.start.${key}`)) ?? fallback;
   } catch {
     return fallback;
   }
@@ -335,6 +335,6 @@ function readStore(key, fallback) {
 
 function writeStore(key, value) {
   try {
-    localStorage.setItem(`aether.start.${key}`, JSON.stringify(value));
+    localStorage.setItem(`shaurya.start.${key}`, JSON.stringify(value));
   } catch { /* storage disabled; the widget still works for this session */ }
 }

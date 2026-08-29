@@ -163,7 +163,7 @@ class GameFeedsService extends EventEmitter {
     return {
       available: false,
       reason: 'No storefront exposes per-title cloud-save state through a public API. '
-        + 'Aether can show which titles support cloud saves, but a browser cannot '
+        + 'Shaurya can show which titles support cloud saves, but a browser cannot '
         + 'see whether a specific save is in conflict — only the game client can.',
       supported: this.store.data.library.slice(0, 50).map((g) => ({
         appId: g.appId, name: g.name,
@@ -198,7 +198,7 @@ class GameFeedsService extends EventEmitter {
   epicLibrary() {
     return {
       available: false,
-      reason: 'Epic has no public library API. Aether tracks their free-games feed '
+      reason: 'Epic has no public library API. Shaurya tracks their free-games feed '
         + 'instead of showing a list it cannot populate.',
       games: [],
     };

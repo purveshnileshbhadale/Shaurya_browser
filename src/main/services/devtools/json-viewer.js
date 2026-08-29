@@ -4,7 +4,7 @@
  *
  * When a navigation returns raw JSON, Chromium renders it as a wall of
  * unwrapped text. This intercepts the response headers, and for a top-level
- * document whose type is JSON, redirects the tab to `aether://json`, which
+ * document whose type is JSON, redirects the tab to `shaurya://json`, which
  * renders a collapsible tree with search and a copy-path affordance.
  *
  * The original response is not consumed twice: the viewer page re-fetches
@@ -62,13 +62,13 @@ class JsonViewerService extends EventEmitter {
     if (!this._enabled()) return false;
     if (resourceType !== 'mainFrame') return false;
     if (!contentType || !JSON_TYPES.test(contentType)) return false;
-    if (url.startsWith('aether://')) return false;
+    if (url.startsWith('shaurya://')) return false;
     return true;
   }
 
   /** The viewer URL for a target document. */
   viewerUrl(url) {
-    return `aether://json/?src=${encodeURIComponent(url)}`;
+    return `shaurya://json/?src=${encodeURIComponent(url)}`;
   }
 
   /** "Show raw" — the next load of this URL bypasses the viewer. */

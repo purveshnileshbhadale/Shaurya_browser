@@ -19,14 +19,14 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:name=".AetherApplication"
+        android:name=".ShauryaApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Aether"
+        android:theme="@style/Theme.Shaurya"
         android:usesCleartextTraffic="false"
         android:enableOnBackInvokedCallback="true">
 
@@ -36,14 +36,14 @@
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.Aether">
+            android:theme="@style/Theme.Shaurya">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Offer Aether as a browser for http(s) links. -->
+            <!-- Offer Shaurya as a browser for http(s) links. -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -61,7 +61,7 @@
         </activity>
 
         <!--
-            Keeps audio and video playing when Aether is backgrounded or the
+            Keeps audio and video playing when Shaurya is backgrounded or the
             screen is off, and puts real transport controls on the lock screen.
             Started only while something is playing and stopped the moment it
             is not: a browser holding a foreground service the whole time it

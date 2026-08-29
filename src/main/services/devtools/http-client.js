@@ -99,7 +99,7 @@ class HttpClientService extends EventEmitter {
     }
     if (body) headers['Content-Length'] = String(body.length);
     if (!hasHeader(headers, 'accept-encoding')) headers['Accept-Encoding'] = 'gzip, deflate, br';
-    if (!hasHeader(headers, 'user-agent')) headers['User-Agent'] = 'Aether-REST/1.0';
+    if (!hasHeader(headers, 'user-agent')) headers['User-Agent'] = 'Shaurya-REST/1.0';
 
     const record = await this._perform({
       requestId,

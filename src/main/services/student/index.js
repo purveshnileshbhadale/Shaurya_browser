@@ -297,7 +297,7 @@ class StudentService extends EventEmitter {
         const verdict = this.shouldBlock(details.url);
         if (!verdict) return null;
         return {
-          redirectURL: `aether://blocked?reason=${encodeURIComponent(verdict.reason)}`
+          redirectURL: `shaurya://blocked?reason=${encodeURIComponent(verdict.reason)}`
             + `&host=${encodeURIComponent(verdict.host)}`,
         };
       });
@@ -450,7 +450,7 @@ class StudentService extends EventEmitter {
   /**
    * Store OCR output for a page.
    *
-   * Aether does not bundle an OCR engine: a WASM build of Tesseract is
+   * Shaurya does not bundle an OCR engine: a WASM build of Tesseract is
    * ~15 MB and most course PDFs already have a text layer. The recogniser is
    * therefore pluggable — the renderer runs it and posts results here — and
    * the panel says plainly when no engine is configured rather than showing
@@ -533,7 +533,7 @@ class StudentService extends EventEmitter {
   /**
    * A group study room is a URL pinned over the study tabs.
    *
-   * Aether does not run signalling or TURN servers, so it does not implement
+   * Shaurya does not run signalling or TURN servers, so it does not implement
    * its own conferencing: it pins whatever room the group already uses. That
    * is a smaller promise than the spec's wording, and it is the honest one —
    * a browser-built video stack with no infrastructure behind it would work
@@ -544,7 +544,7 @@ class StudentService extends EventEmitter {
       url: this.settings.get('study.roomUrl') || '',
       pinned: this.settings.get('study.roomPinned') === true,
       note: 'Pins an existing room (Jitsi, Meet, Discord) over your tabs. '
-        + 'Aether does not host the call.',
+        + 'Shaurya does not host the call.',
     };
   }
 

@@ -20,8 +20,8 @@ const { createLogger } = require('../util/logger');
 
 const log = createLogger('tab');
 
-/** Pages we render ourselves, served from `aether://`. */
-const INTERNAL_PREFIX = 'aether://';
+/** Pages we render ourselves, served from `shaurya://`. */
+const INTERNAL_PREFIX = 'shaurya://';
 
 class Tab extends EventEmitter {
   /**
@@ -31,7 +31,7 @@ class Tab extends EventEmitter {
    * @param {string} [opts.url]
    * @param {string} [opts.id]               reused when restoring a session
    */
-  constructor({ session, profileId, url = 'aether://start', id, groupId = null, pinned = false }) {
+  constructor({ session, profileId, url = 'shaurya://start', id, groupId = null, pinned = false }) {
     super();
     this.id = id || uid('t_');
     this.session = session;

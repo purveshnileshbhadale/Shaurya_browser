@@ -1,4 +1,4 @@
-package dev.aether.browser.data
+package dev.shaurya.browser.data
 
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -86,7 +86,7 @@ data class ShieldStats(
     val since: Long = System.currentTimeMillis(),
 )
 
-class AetherStore(private val context: Context) {
+class ShauryaStore(private val context: Context) {
 
     private val json = Json {
         ignoreUnknownKeys = true   // an older build must survive a newer file
@@ -103,7 +103,7 @@ class AetherStore(private val context: Context) {
             .build()
         EncryptedSharedPreferences.create(
             context,
-            "aether_secrets",
+            "shaurya_secrets",
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,

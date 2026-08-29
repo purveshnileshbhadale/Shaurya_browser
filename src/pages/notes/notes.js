@@ -1,7 +1,7 @@
 /**
  * Notes library: browse, read and export generated notes (spec §4).
  */
-const api = window.aether;
+const api = window.shaurya;
 const list = document.getElementById('list');
 const main = document.getElementById('main');
 const search = document.getElementById('search');

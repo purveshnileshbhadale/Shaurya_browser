@@ -395,7 +395,7 @@ class VaultService extends EventEmitter {
     this._requireUnlocked();
     // A separate key derived from the vault key, so a sync-side compromise
     // cannot be replayed against the local file.
-    return crypto.createHmac('sha256', this._key).update('aether-sync-v1').digest();
+    return crypto.createHmac('sha256', this._key).update('shaurya-sync-v1').digest();
   }
 
   exportAll() {

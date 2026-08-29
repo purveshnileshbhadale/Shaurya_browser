@@ -149,7 +149,7 @@ export function createModeSwitcher({ container }) {
       h('button.mode-row.mode-row-quiet', {
         onclick: () => {
           closeMenu();
-          invoke('tabs.create', { url: 'aether://settings#modes' });
+          invoke('tabs.create', { url: 'shaurya://settings#modes' });
         },
       }, h('span.mode-row-icon', {}, icon('sliders')),
       h('span.mode-row-text', {},
@@ -240,22 +240,22 @@ export const QUICK_ACTIONS = {
   http: {
     icon: 'send',
     label: 'REST client',
-    run: () => window.aetherPanels?.open('dev'),
+    run: () => window.shauryaPanels?.open('dev'),
   },
   localservers: {
     icon: 'server',
     label: 'Local servers',
-    run: () => window.aetherPanels?.open('dev'),
+    run: () => window.shauryaPanels?.open('dev'),
   },
   teleprompter: {
     icon: 'text',
     label: 'Teleprompter',
-    run: () => window.aetherPanels?.open('assets'),
+    run: () => window.shauryaPanels?.open('assets'),
   },
   thumbnail: {
     icon: 'image',
     label: 'Thumbnail A/B',
-    run: () => window.aetherPanels?.open('brand'),
+    run: () => window.shauryaPanels?.open('brand'),
   },
   focuscanvas: {
     icon: 'maximize',
@@ -281,7 +281,7 @@ export const QUICK_ACTIONS = {
   flashcards: {
     icon: 'cards',
     label: 'Make flashcards',
-    run: () => window.aetherPanels?.open('study'),
+    run: () => window.shauryaPanels?.open('study'),
   },
   tor: {
     icon: 'shield',
@@ -293,7 +293,7 @@ export const QUICK_ACTIONS = {
   shred: {
     icon: 'trash',
     label: 'Shred a download',
-    run: () => window.aetherPanels?.open('ghost'),
+    run: () => window.shauryaPanels?.open('ghost'),
   },
   panic: {
     icon: 'alert',

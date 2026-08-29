@@ -441,7 +441,7 @@ class CreatorService extends EventEmitter {
       return {
         connected: [],
         note: 'Connect a channel to see views and engagement here. '
-          + 'Aether stores the token in your encrypted vault, not in settings.',
+          + 'Shaurya stores the token in your encrypted vault, not in settings.',
       };
     }
     return { connected: platforms, series: [], note: 'Fetching…' };

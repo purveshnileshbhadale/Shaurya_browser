@@ -3,7 +3,7 @@
  * Multiplexer for Electron's `session.webRequest`.
  *
  * Electron keeps exactly **one** listener per event per session: calling
- * `onBeforeRequest` twice silently replaces the first registration. Aether
+ * `onBeforeRequest` twice silently replaces the first registration. Shaurya
  * has five subsystems that all need a say in the request path — ad blocking,
  * HTTPS-only, the CORS dev toggle, the JSON viewer and the VPN — so
  * registering them directly would mean whichever service booted last was the

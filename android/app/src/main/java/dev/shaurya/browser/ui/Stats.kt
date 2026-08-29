@@ -1,4 +1,4 @@
-package dev.aether.browser.ui
+package dev.shaurya.browser.ui
 
 import kotlin.math.roundToLong
 

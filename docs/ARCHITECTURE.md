@@ -13,7 +13,7 @@ README; for decisions the spec left open, see `ASSUMPTIONS.md`.
 │  window/     tabs · layout · window orchestration                 │
 │  ipc/        the whole main↔renderer contract                     │
 └──────────┬───────────────────────┬────────────────────────────────┘
-           │ aether:invoke         │ aether:content
+           │ shaurya:invoke         │ shaurya:content
            │ (privileged)          │ (page-scoped)
 ┌──────────▼───────────┐   ┌───────▼──────────────────────────────┐
 │ chrome renderer      │   │ page renderers (one process per tab) │
@@ -24,15 +24,15 @@ README; for decisions the spec left open, see `ASSUMPTIONS.md`.
 
 The chrome renderer is privileged and loads only local files. Page renderers are
 sandboxed, isolated, and get a *different, unprivileged* IPC channel. That split
-is the security boundary: a compromised web renderer can reach `aether:content`
+is the security boundary: a compromised web renderer can reach `shaurya:content`
 (which offers "what cosmetic rules apply to me" and little else) and cannot
-reach `aether:invoke` at all.
+reach `shaurya:invoke` at all.
 
 ---
 
 ## The view tree
 
-Aether uses `BaseWindow` rather than `BrowserWindow`, so the chrome and every
+Shaurya uses `BaseWindow` rather than `BrowserWindow`, so the chrome and every
 page are siblings in one view tree with explicit z-order:
 
 ```
@@ -190,15 +190,15 @@ must never make the browser unusable.
 
 `protocol.handle()` is an alias for `session.defaultSession.protocol`. Every tab
 here loads in a profile *partition*, so a handler registered globally is
-invisible to all of them — every `aether://` page fails with `ERR_FAILED` and no
+invisible to all of them — every `shaurya://` page fails with `ERR_FAILED` and no
 explanation. The profile service installs the handler on each session it
 creates.
 
 ### IPC trust follows the document, not the WebContents
 
-Internal `aether://` pages need the privileged surface; web pages must never
+Internal `shaurya://` pages need the privileged surface; web pages must never
 have it. Trust is granted and revoked on every main-frame commit, because a tab
-navigating from `aether://settings` to a website keeps the same WebContents id —
+navigating from `shaurya://settings` to a website keeps the same WebContents id —
 trust granted once and never revoked would hand a web page the vault.
 
 ---

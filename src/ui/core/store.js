@@ -7,7 +7,7 @@
  * — which is the difference between a 60fps tab strip and a stuttering one.
  */
 
-const bridge = window.aether;
+const bridge = window.shaurya;
 
 /** Subscribers, keyed by the state slice they watch. */
 const subscribers = new Map();
@@ -128,7 +128,7 @@ function notify(slice) {
         try {
           fn();
         } catch (err) {
-          console.error(`[aether] render for "${name}" failed:`, err);
+          console.error(`[shaurya] render for "${name}" failed:`, err);
         }
       }
     }
@@ -316,13 +316,13 @@ function wireEvents() {
   on('ai:confirm', (payload) => update('ai', { confirm: payload }));
 
   on('capture:result', (result) => {
-    window.dispatchEvent(new CustomEvent('aether:capture', { detail: result }));
+    window.dispatchEvent(new CustomEvent('shaurya:capture', { detail: result }));
   });
   on('shortcut:invoked', ({ id }) => {
-    window.dispatchEvent(new CustomEvent('aether:command', { detail: { id } }));
+    window.dispatchEvent(new CustomEvent('shaurya:command', { detail: { id } }));
   });
   on('palette:open', () => {
-    window.dispatchEvent(new CustomEvent('aether:command', { detail: { id: 'palette.open' } }));
+    window.dispatchEvent(new CustomEvent('shaurya:command', { detail: { id: 'palette.open' } }));
   });
 }
 

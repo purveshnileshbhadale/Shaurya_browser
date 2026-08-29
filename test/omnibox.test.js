@@ -39,7 +39,7 @@ test('explicit schemes navigate as typed', () => {
     'https://example.com/a?b=c',
     'http://example.com',
     'file:///home/user/notes.md',
-    'aether://settings',
+    'shaurya://settings',
     'view-source:https://example.com',
   ]) {
     const r = s.resolve(input);
@@ -105,7 +105,7 @@ test('the search URL encodes the query', () => {
 
 test('empty input goes to the start page', () => {
   const s = makeService();
-  assert.equal(s.resolve('   ').url, 'aether://start');
+  assert.equal(s.resolve('   ').url, 'shaurya://start');
 });
 
 test('open tabs outrank history in suggestions', async () => {
