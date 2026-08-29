@@ -7,6 +7,15 @@
 ! are ~112,000 rules downloaded on first run — this is about sixty, and it
 ! is deliberately not a substitute for them.
 !
+! Two kinds of rule live here, and the difference matters. A pure ad-serving
+! host (doubleclick, adnxs, googlesyndication) is unqualified: it serves
+! nothing but ads, including inside its own nested iframes, where a
+! $third-party qualifier would stop matching. A domain that is also a
+! company's real website (criteo.com, hotjar.com, taboola.com) is scoped
+! $third-party, so its beacons are blocked on other people's sites while
+! visiting the company itself still works. Getting that backwards is how a
+! blocker starts breaking pages people meant to open.
+!
 ! It covers only the largest and least ambiguous ad and tracking endpoints,
 ! the ones present on a large share of the web. Every rule here is a domain
 ! anchor on a host that exists to serve ads or collect analytics, so the
@@ -23,30 +32,30 @@
 ||adservice.google.com^
 ||adnxs.com^
 ||adsrvr.org^
-||rubiconproject.com^
-||pubmatic.com^
-||openx.net^
-||criteo.com^
+||rubiconproject.com^$third-party
+||pubmatic.com^$third-party
+||openx.net^$third-party
+||criteo.com^$third-party
 ||criteo.net^
-||taboola.com^
-||outbrain.com^
-||sharethrough.com^
-||smartadserver.com^
+||taboola.com^$third-party
+||outbrain.com^$third-party
+||sharethrough.com^$third-party
+||smartadserver.com^$third-party
 ||casalemedia.com^
-||33across.com^
+||33across.com^$third-party
 ||indexww.com^
-||media.net^
+||media.net^$third-party
 ||amazon-adsystem.com^
-||adcolony.com^
-||applovin.com^
+||adcolony.com^$third-party
+||applovin.com^$third-party
 ||unityads.unity3d.com^
-||moatads.com^
-||teads.tv^
-||sonobi.com^
+||moatads.com^$third-party
+||teads.tv^$third-party
+||sonobi.com^$third-party
 ||districtm.io^
 ||bidswitch.net^
-||yieldmo.com^
-||triplelift.com^
+||yieldmo.com^$third-party
+||triplelift.com^$third-party
 
 ! ---- analytics and tracking --------------------------------------------
 ||google-analytics.com^
@@ -55,7 +64,7 @@
 ||scorecardresearch.com^
 ||quantserve.com^
 ||quantcount.com^
-||chartbeat.com^
+||chartbeat.com^$third-party
 ||chartbeat.net^
 ||newrelic.com^$third-party
 ||nr-data.net^
@@ -63,18 +72,18 @@
 ||segment.com^$third-party
 ||mixpanel.com^$third-party
 ||amplitude.com^$third-party
-||fullstory.com^
-||hotjar.com^
-||hotjar.io^
-||mouseflow.com^
-||crazyegg.com^
-||inspectlet.com^
-||luckyorange.com^
+||fullstory.com^$third-party
+||hotjar.com^$third-party
+||hotjar.io^$third-party
+||mouseflow.com^$third-party
+||crazyegg.com^$third-party
+||inspectlet.com^$third-party
+||luckyorange.com^$third-party
 ||clarity.ms^
 ||branch.io^$third-party
-||appsflyer.com^
+||appsflyer.com^$third-party
 ||adjust.com^$third-party
-||kochava.com^
+||kochava.com^$third-party
 ||bugsnag.com^$third-party
 
 ! ---- social tracking pixels --------------------------------------------

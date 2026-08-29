@@ -196,6 +196,50 @@ test('disabling every list falls back to the seed rather than to nothing', async
   }
 });
 
+// ---- the bundled seed's own rules ----------------------------------------
+
+test('the seed blocks the big trackers without breaking ordinary pages', () => {
+  const { FilterEngine } = require('../src/main/services/adblock/matcher');
+  const { parseList } = require('../src/main/services/adblock/filter-parser');
+  const engine = new FilterEngine();
+  engine.addParsedList(parseList(
+    fs.readFileSync(path.join(__dirname, '..', 'assets', 'filters', 'seed.txt'), 'utf8')
+  ));
+
+  assert.ok(engine.stats.network > 50, `only ${engine.stats.network} seed rules parsed`);
+
+  const page = 'https://news.example.org/article';
+  const blocks = (url, type = 'script', source = page) =>
+    engine.match({ url, sourceUrl: source, type }).block;
+
+  for (const url of [
+    'https://securepubads.g.doubleclick.net/tag/js/gpt.js',
+    'https://www.google-analytics.com/analytics.js',
+    'https://connect.facebook.net/en_US/fbevents.js',
+    'https://cdn.taboola.com/libtrc/loader.js',
+    'https://static.hotjar.com/c/hotjar-1.js',
+  ]) assert.ok(blocks(url), `seed did not block ${url}`);
+
+  // A seed ships to everyone with no chance to review it first, so it must
+  // fear a false positive far more than a miss: a broken site is worse than
+  // a tracker that gets through for the seconds before the real lists land.
+  for (const url of [
+    'https://news.example.org/assets/app.js',
+    'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.js',
+    'https://fonts.googleapis.com/css2?family=Inter',
+  ]) assert.ok(!blocks(url), `seed wrongly blocked ${url}`);
+
+  // Rules naming a company that also has a real website are scoped
+  // third-party, so its beacons are blocked elsewhere while the site itself
+  // still opens. An unqualified `||criteo.com^` means "nobody can visit
+  // criteo.com", which is not what a blocker is for.
+  for (const url of [
+    'https://www.criteo.com/careers',
+    'https://www.hotjar.com/pricing',
+    'https://www.taboola.com/',
+  ]) assert.ok(!blocks(url, 'mainFrame', url), `seed blocked a visit to ${url}`);
+});
+
 // ---- what the UI is told -------------------------------------------------
 
 test('stats say when protection is only the seed', async () => {
