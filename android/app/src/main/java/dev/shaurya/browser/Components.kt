@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,6 +67,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.shaurya.browser.ui.Ink
 import dev.shaurya.browser.ui.LocalReducedMotion
 import dev.shaurya.browser.ui.ShieldButton
 
@@ -112,6 +115,7 @@ fun TopBar(
     blockedCount: Int,
     shieldsOnHere: Boolean,
     seedOnly: Boolean,
+    minimal: Boolean,
     onTextChange: (String) -> Unit,
     onEditingChange: (Boolean) -> Unit,
     onGo: () -> Unit,
@@ -120,6 +124,23 @@ fun TopBar(
     onTabs: () -> Unit,
     onMenu: () -> Unit,
 ) {
+    // On the start page there is no address to show and nothing to shield, so
+    // the bar carries only the two controls that still mean something and
+    // stays transparent, letting the backdrop run to the top of the screen.
+    if (minimal) {
+        Row(
+            Modifier.statusBarsPadding().fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Spacer(Modifier.weight(1f))
+            TabCounter(count = tabCount, onClick = onTabs, tint = Ink.Dim)
+            IconButton(onClick = onMenu) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Menu", tint = Ink.Dim)
+            }
+        }
+        return
+    }
+
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Row(
             Modifier
@@ -245,13 +266,20 @@ private fun Omnibox(
  * worth a permanent place on the bar.
  */
 @Composable
-private fun TabCounter(count: Int, onClick: () -> Unit) {
+private fun TabCounter(count: Int, onClick: () -> Unit, tint: Color? = null) {
     IconButton(onClick = onClick) {
+        // Outlined over the backdrop, filled over the chrome: a filled square
+        // needs a known surface behind it to punch its number out of, and the
+        // start page has a gradient there instead.
+        val outline = tint != null
         Box(
             Modifier
-                .size(22.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(MaterialTheme.colorScheme.onSurfaceVariant)
+                .size(if (outline) 24.dp else 22.dp)
+                .clip(RoundedCornerShape(if (outline) 7.dp else 6.dp))
+                .then(
+                    if (outline) Modifier.border(1.8.dp, tint!!, RoundedCornerShape(7.dp))
+                    else Modifier.background(MaterialTheme.colorScheme.onSurfaceVariant)
+                )
                 .semantics { contentDescription = "$count open tabs" },
             contentAlignment = Alignment.Center,
         ) {
@@ -259,7 +287,7 @@ private fun TabCounter(count: Int, onClick: () -> Unit) {
                 // Past 99 the glyph stops being a number and becomes a
                 // reproach, which is roughly the right message.
                 if (count > 99) "∞" else "$count",
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                color = tint ?: MaterialTheme.colorScheme.surfaceContainer,
                 fontSize = if (count > 9) 10.sp else 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -283,6 +311,7 @@ fun BottomNav(
     tab: BrowserViewModel.Tab?,
     nowPlaying: NowPlaying?,
     bookmarked: Boolean,
+    floating: Boolean,
     onBack: () -> Unit,
     onForward: () -> Unit,
     onNewTab: () -> Unit,
@@ -291,6 +320,56 @@ fun BottomNav(
     onPlayPause: () -> Unit,
     onOpenPlaying: () -> Unit,
 ) {
+    // Floating only over the start page, where the backdrop behind it is
+    // ours. Over a web page the content is arbitrary — a translucent pill on
+    // top of someone's white article is unreadable — so there it stays a
+    // solid bar.
+    if (floating) {
+        Column(Modifier.navigationBarsPadding()) {
+            nowPlaying?.let {
+                Box(Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+                    NowPlayingBar(it, onPlayPause = onPlayPause, onOpen = onOpenPlaying)
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(Ink.GlassStrong)
+                        .border(1.dp, Ink.Hairline, RoundedCornerShape(30.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NavIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tab?.canGoBack == true, onBack)
+                    NavIcon(Icons.AutoMirrored.Filled.ArrowForward, "Forward", tab?.canGoForward == true, onForward)
+                    // The one action with its own colour, because it is the
+                    // one the start page exists to invite.
+                    Box(
+                        Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(46.dp, 40.dp)
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(Brush.linearGradient(listOf(Ink.NewTabStart, Ink.NewTabEnd)))
+                            .clickable(onClick = onNewTab),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "New tab", tint = Color.White)
+                    }
+                    NavIcon(
+                        if (bookmarked) Icons.Filled.Star else Icons.Filled.Bookmark,
+                        if (bookmarked) "Bookmarked" else "Bookmark this page",
+                        tab != null, onBookmark,
+                    )
+                    NavIcon(Icons.Filled.History, "History", true, onHistory)
+                }
+            }
+        }
+        return
+    }
+
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.navigationBarsPadding()) {
             AnimatedVisibility(
@@ -330,6 +409,22 @@ fun BottomNav(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NavIcon(
+    icon: ImageVector,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(46.dp, 40.dp)) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (enabled) Ink.Primary else Ink.Faint.copy(alpha = 0.45f),
+        )
     }
 }
 

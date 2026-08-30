@@ -1,31 +1,31 @@
 package dev.shaurya.browser.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Calendar
 
 /** One most-visited site. */
 data class TopSite(val url: String, val title: String)
@@ -33,222 +33,203 @@ data class TopSite(val url: String, val title: String)
 /**
  * The page a new tab opens to.
  *
- * The app previously opened new tabs on `about:blank` — a white void with no
- * way forward except typing a full address. This is the single largest gap
- * between it and any shipping browser, and no amount of polish elsewhere
- * compensates for a blank first screen.
- *
- * The layout answers the two questions someone has on opening a tab, in
- * order: *where am I going* (search, then the sites they actually use), and
- * *is this thing working* (the shield totals). The stats sit below the tiles
- * rather than above them, because they are reassurance, not a destination —
- * putting them first would make the browser about itself.
+ * Laid out as a greeting first, then the one thing you came to do (type an
+ * address), then the places you go, then what the browser has been doing for
+ * you. The shield total is deliberately last and deliberately small — it is
+ * reassurance, and a browser whose home screen leads with its own statistics
+ * is a browser that is about itself.
  */
 @Composable
 fun NewTabPage(
     blocked: Long,
     httpsUpgrades: Long,
     topSites: List<TopSite>,
+    recent: List<TopSite>,
     incognito: Boolean,
     onSearch: () -> Unit,
     onOpenSite: (String) -> Unit,
-    onBookmarks: () -> Unit,
-    onHistory: () -> Unit,
-    onAssistant: () -> Unit,
 ) {
+    val greeting = remember { Accents.greeting(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+            .verticalScroll(rememberScrollState()),
     ) {
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(18.dp))
 
-        Text(
-            "Shaurya",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            if (incognito) "Private tab — nothing here is saved"
-            else "Private by default",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(Modifier.padding(horizontal = 24.dp)) {
+            Text(
+                if (incognito) "Private tab" else greeting,
+                fontSize = 15.sp,
+                color = Ink.Dim,
+            )
+            Spacer(Modifier.height(2.dp))
+            // Light weight against bold, so the product name carries the line
+            // without the whole heading shouting.
+            Text(
+                "Welcome to",
+                fontSize = 34.sp,
+                fontWeight = FontWeight.ExtraLight,
+                color = Ink.Primary,
+                lineHeight = 38.sp,
+            )
+            Text(
+                "Shaurya",
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ink.Primary,
+                lineHeight = 38.sp,
+            )
+        }
 
         Spacer(Modifier.height(20.dp))
+        GlassSearch(onClick = onSearch)
 
-        // A large, obvious target that focuses the real address bar. New
-        // users reach for the middle of the screen, not a 40dp-tall bar at
-        // the edge of it.
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onSearch),
-        ) {
-            Row(
-                Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Filled.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    "Search or enter address",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        if (!incognito) {
+            Spacer(Modifier.height(16.dp))
+            ShieldLine(blocked = blocked, httpsUpgrades = httpsUpgrades)
         }
-
-        Spacer(Modifier.height(24.dp))
 
         if (topSites.isNotEmpty() && !incognito) {
-            Text(
-                "Frequently visited",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
-            // Fixed height so this grid does not fight the outer scroll: it
-            // holds at most eight tiles in two rows, which is a known size.
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                userScrollEnabled = false,
-            ) {
-                items(topSites, key = { it.url }) { site ->
-                    SiteTile(site, onClick = { onOpenSite(site.url) })
-                }
-            }
+            Spacer(Modifier.height(20.dp))
+            SiteGrid(sites = topSites, onOpen = onOpenSite)
+        }
+
+        if (recent.isNotEmpty() && !incognito) {
+            Spacer(Modifier.height(22.dp))
+            RecentCard(entries = recent, onOpen = onOpenSite)
+        }
+
+        if (incognito) {
             Spacer(Modifier.height(24.dp))
+            Text(
+                "Nothing you do in this tab is written to history, and no "
+                    + "thumbnail of it is kept.",
+                fontSize = 13.sp,
+                color = Ink.Dim,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
         }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            QuickTile(Icons.Filled.Bookmark, "Bookmarks", Modifier.weight(1f), onBookmarks)
-            QuickTile(Icons.Filled.History, "History", Modifier.weight(1f), onHistory)
-            QuickTile(Icons.Filled.AutoAwesome, "Assistant", Modifier.weight(1f), onAssistant)
-        }
+        Spacer(Modifier.height(28.dp))
+    }
+}
 
-        Spacer(Modifier.height(24.dp))
-
-        ShieldSummary(blocked = blocked, httpsUpgrades = httpsUpgrades)
-
-        Spacer(Modifier.height(40.dp))
+@Composable
+private fun GlassSearch(onClick: () -> Unit) {
+    Row(
+        Modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Ink.Glass)
+            .border(1.dp, Ink.Hairline, RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 15.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.Search,
+            contentDescription = null,
+            tint = Ink.Dim,
+            modifier = Modifier.size(19.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text("Search or enter address", fontSize = 15.sp, color = Ink.Dim)
     }
 }
 
 /**
- * The lifetime shield totals.
+ * The shield total, as a sentence.
  *
- * Note the wording: the count is stated flatly because it is measured, and
- * the saving says "estimated" because it is not — it is the count multiplied
- * by an assumed request size. Presenting a guess in the same voice as a
- * measurement is how a privacy dashboard turns into marketing.
+ * A line of text rather than a card of big numbers. The count is measured, so
+ * it is stated plainly; the saving is not, so it is marked "est." right
+ * there rather than in a footnote nobody reads.
  */
 @Composable
-private fun ShieldSummary(blocked: Long, httpsUpgrades: Long) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth(),
+private fun ShieldLine(blocked: Long, httpsUpgrades: Long) {
+    Row(
+        Modifier.padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.padding(18.dp)) {
+        Icon(
+            Icons.Filled.Shield,
+            contentDescription = null,
+            tint = Ink.Gold,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(Stats.formatCount(blocked), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink.Gold)
+        Spacer(Modifier.width(5.dp))
+        Text("blocked", fontSize = 13.sp, color = Ink.Dim)
+        if (blocked > 0) {
+            Spacer(Modifier.width(8.dp))
+            Text("·", fontSize = 13.sp, color = Ink.Faint)
+            Spacer(Modifier.width(8.dp))
             Text(
-                "Since you installed Shaurya",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Stats.formatBytes(Stats.bytesSaved(blocked)),
+                fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink.Gold,
             )
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth()) {
-                BigStat(
-                    value = Stats.formatCount(blocked),
-                    label = "Trackers & ads\nblocked",
-                    modifier = Modifier.weight(1f),
-                )
-                BigStat(
-                    value = Stats.formatBytes(Stats.bytesSaved(blocked)),
-                    label = "Estimated data\nsaved",
-                    modifier = Modifier.weight(1f),
-                )
-                BigStat(
-                    value = Stats.formatCount(httpsUpgrades),
-                    label = "Connections\nupgraded",
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (blocked > 0) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Data saved is an estimate: ${Stats.formatBytes(Stats.BYTES_PER_BLOCKED_REQUEST)} "
-                        + "assumed per blocked request.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Spacer(Modifier.width(5.dp))
+            Text("saved · est.", fontSize = 13.sp, color = Ink.Dim)
         }
     }
 }
 
 @Composable
-private fun BigStat(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            value,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+private fun SiteGrid(sites: List<TopSite>, onOpen: (String) -> Unit) {
+    // A plain Column of Rows rather than a LazyVerticalGrid: this list is at
+    // most eight items and lives inside a scrolling column, where nesting a
+    // lazy grid means giving it a fixed height and fighting two scroll axes.
+    Column(Modifier.padding(horizontal = 14.dp)) {
+        sites.chunked(4).forEach { row ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                row.forEach { site ->
+                    SiteTile(site, onOpen, Modifier.weight(1f))
+                }
+                // Keep a short final row left-aligned on the same grid.
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }
 
 @Composable
-private fun SiteTile(site: TopSite, onClick: () -> Unit) {
+private fun SiteTile(site: TopSite, onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
+    val (start, end) = remember(site.url) { Accents.tileColors(site.url) }
     Column(
-        Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onOpen(site.url) }
+            .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer),
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(listOf(Color(start), Color(end)))
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            // A letter, not a favicon. Fetching icons for the new tab page
-            // would mean a network request per tile to sites the user is not
-            // visiting yet — a tracking vector on the one screen that should
-            // not have one.
+            // A letter, not a favicon: fetching icons here would mean a
+            // network request per tile to sites the user has not opened yet,
+            // on the one screen that should not phone anywhere.
             Text(
                 Stats.tileInitial(site.url),
-                fontSize = 20.sp,
+                fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = Color.White,
             )
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             Stats.tileLabel(site.url),
-            style = MaterialTheme.typography.labelSmall,
+            fontSize = 11.sp,
+            color = Ink.Dim,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -256,24 +237,64 @@ private fun SiteTile(site: TopSite, onClick: () -> Unit) {
 }
 
 @Composable
-private fun QuickTile(
-    icon: ImageVector,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = modifier.clickable(onClick = onClick),
+private fun RecentCard(entries: List<TopSite>, onOpen: (String) -> Unit) {
+    Column(
+        Modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Ink.Glass)
+            .border(1.dp, Ink.Hairline, RoundedCornerShape(24.dp)),
     ) {
-        Column(
-            Modifier.padding(vertical = 14.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(6.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium)
+        Text(
+            "JUMP BACK IN",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.9.sp,
+            color = Ink.Faint,
+            modifier = Modifier.padding(start = 18.dp, top = 14.dp, bottom = 8.dp),
+        )
+        entries.take(4).forEach { entry ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpen(entry.url) }
+                    .padding(horizontal = 18.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(Color(Accents.listColor(entry.url))),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        Stats.tileInitial(entry.url),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        entry.title.ifBlank { entry.url },
+                        fontSize = 13.5.sp,
+                        color = Ink.Primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        Stats.tileLabel(entry.url),
+                        fontSize = 11.sp,
+                        color = Ink.Faint,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
+        Spacer(Modifier.height(8.dp))
     }
 }

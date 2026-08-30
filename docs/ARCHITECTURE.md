@@ -366,6 +366,34 @@ It is still not full HCT — hue and chroma are HSL's, so two seeds at equal
 nominal chroma are not equally colourful. That affects how vivid the palette
 looks. Contrast, the part that decides whether the app is usable, is exact.
 
+### The start page
+
+`ui/Aurora.kt` draws the backdrop as three radial washes over a deep base,
+rather than shipping a bitmap: an image large enough for a modern phone is a
+couple of megabytes, needs several densities, and still looks wrong on an
+aspect ratio nobody tested. The washes are drawn in `drawBehind` because two
+of their centres sit outside the bounds, which is what stops it reading as
+three circles on a rectangle.
+
+`ui/Accents.kt` gives every site a colour derived from its registrable name
+(FNV-1a, not `hashCode()`, whose value is not guaranteed stable across JVM
+versions). Deriving rather than assigning by position is the point: a tile
+that changes hue when the ranking reshuffles has stopped being a way to
+recognise a site.
+
+The tones there repeat the palette's lesson. Fixing HSL lightness at 0.55 for
+every tile makes a yellow-green disc perceptually near-white while a blue one
+stays dark, so the white initials vanish on some sites and not others —
+measured at 1.84:1 before the fix. Tiles are built from `Palette.tone`
+instead, so tone 48 is equally dark at every hue; `AccentsTest` checks white-
+on-tile contrast across all 360 of them.
+
+The bars change shape with context. On the start page the top bar drops to a
+tab counter and a menu — there is no address to show and nothing to shield —
+and the nav becomes a floating pill over our own backdrop. Over a web page
+both go back to solid surfaces, because a translucent pill on top of
+someone's white article is unreadable.
+
 ### Tab thumbnails
 
 `WebView.draw` renders what is *currently composited*, so a backgrounded tab

@@ -39,6 +39,7 @@ import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import dev.shaurya.browser.media.PlaybackService
 import dev.shaurya.browser.ui.ShauryaTheme
+import dev.shaurya.browser.ui.AuroraBackground
 import dev.shaurya.browser.ui.BookmarksSheet
 import dev.shaurya.browser.ui.HistorySheet
 import dev.shaurya.browser.ui.LocalReducedMotion
@@ -46,6 +47,7 @@ import dev.shaurya.browser.ui.NewTabPage
 import dev.shaurya.browser.ui.SettingsSheet
 import dev.shaurya.browser.ui.ShieldsSheet
 import dev.shaurya.browser.ui.ShieldsState
+import dev.shaurya.browser.ui.TopSite
 import dev.shaurya.browser.ui.isDarkTheme
 import kotlinx.coroutines.launch
 
@@ -349,6 +351,7 @@ class MainActivity : ComponentActivity() {
                         blockedCount = active?.blockedCount ?: 0,
                         shieldsOnHere = shieldsOnHere,
                         seedOnly = seedOnly,
+                        minimal = onNewTab,
                         onTextChange = { addressText = it },
                         onEditingChange = { editingAddress = it },
                         onGo = {
@@ -375,6 +378,7 @@ class MainActivity : ComponentActivity() {
                         tab = active,
                         nowPlaying = nowPlaying,
                         bookmarked = bookmarked,
+                        floating = onNewTab,
                         onBack = { webViews[activeId]?.goBack() },
                         onForward = { webViews[activeId]?.goForward() },
                         onNewTab = { model.newTab() },
@@ -400,17 +404,21 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (onNewTab) {
-                        NewTabPage(
-                            blocked = stats.blocked,
-                            httpsUpgrades = stats.httpsUpgrades,
-                            topSites = remember(history) { model.topSites() },
-                            incognito = active?.incognito == true,
-                            onSearch = { editingAddress = true },
-                            onOpenSite = { navigate(activeId, it) },
-                            onBookmarks = { sheet = Sheet.BOOKMARKS },
-                            onHistory = { sheet = Sheet.HISTORY },
-                            onAssistant = { model.toggleAssistant() },
-                        )
+                        AuroraBackground {
+                            NewTabPage(
+                                blocked = stats.blocked,
+                                httpsUpgrades = stats.httpsUpgrades,
+                                topSites = remember(history) { model.topSites() },
+                                recent = remember(history) {
+                                    history.sortedByDescending { it.lastVisit }
+                                        .take(4)
+                                        .map { TopSite(it.url, it.title) }
+                                },
+                                incognito = active?.incognito == true,
+                                onSearch = { editingAddress = true },
+                                onOpenSite = { navigate(activeId, it) },
+                            )
+                        }
                     }
 
                     // Suggestions overlay the page directly under the bar they
