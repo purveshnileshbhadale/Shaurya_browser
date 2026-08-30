@@ -3,6 +3,7 @@ package dev.shaurya.browser.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -24,9 +25,31 @@ import androidx.compose.ui.graphics.Color
  * circles on a rectangle.
  */
 private val BASE = Color(0xFF0B0714)
-private val VIOLET = Color(0x8C7C3AED)   // 55% alpha
-private val MAGENTA = Color(0x57EC4899)  // 34%
-private val CYAN = Color(0x470EA5E9)     // 28%
+
+/**
+ * The three washes, derived from the active mode's accent.
+ *
+ * Hardcoding violet meant every mode's start page looked identical, which
+ * made the mode switcher a setting that changed a few buttons. Deriving them
+ * means switching to Student repaints the whole backdrop blue, and the
+ * feature is visible the moment it is used.
+ *
+ * Tones rather than raw HSL lightness, for the reason the palette documents:
+ * a wash built at a fixed lightness is near-white at some hues and dark at
+ * others, so the text over it would be readable only for some modes.
+ */
+private fun washes(accent: Int): Triple<Color, Color, Color> {
+    val (hue, _) = Palette.hueAndSaturation(accent)
+    fun wash(shift: Float, tone: Int, alpha: Int): Color {
+        val seed = Palette.fromHsl(hue + shift, 0.72f, 0.5f)
+        return Color((Palette.tone(seed, tone) and 0x00FFFFFF) or (alpha shl 24))
+    }
+    return Triple(
+        wash(0f, 46, 0x8C),      // the accent itself, 55%
+        wash(38f, 44, 0x57),     // warmer neighbour, 34%
+        wash(-52f, 42, 0x47),    // cooler neighbour, 28%
+    )
+}
 
 /** Colours the start page draws on top of the aurora. */
 object Ink {
@@ -41,10 +64,18 @@ object Ink {
     val NewTabStart = Color(0xFFA855F7)
     val NewTabEnd = Color(0xFFEC4899)
     val Base = BASE
+
+    /** Fallback accent, used before a mode is resolved. */
+    const val DefaultAccent = 0xFF7C9BFF.toInt()
 }
 
 @Composable
-fun AuroraBackground(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun AuroraBackground(
+    modifier: Modifier = Modifier,
+    accent: Int = Ink.DefaultAccent,
+    content: @Composable () -> Unit,
+) {
+    val (VIOLET, MAGENTA, CYAN) = remember(accent) { washes(accent) }
     Box(
         modifier
             .fillMaxSize()

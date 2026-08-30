@@ -124,15 +124,26 @@ fun TopBar(
     onTabs: () -> Unit,
     onMenu: () -> Unit,
 ) {
-    // On the start page there is no address to show and nothing to shield, so
-    // the bar carries only the two controls that still mean something and
-    // stays transparent, letting the backdrop run to the top of the screen.
+    // The address bar is at the top on every screen, the start page included.
+    // Over the start page it is transparent so the backdrop runs behind it;
+    // over a web page it needs an opaque surface, because the content under
+    // it is arbitrary.
     if (minimal) {
         Row(
-            Modifier.statusBarsPadding().fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+            Modifier.statusBarsPadding().fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Spacer(Modifier.weight(1f))
+            Omnibox(
+                text = text,
+                editing = editing,
+                tab = tab,
+                translucent = true,
+                onTextChange = onTextChange,
+                onEditingChange = onEditingChange,
+                onGo = onGo,
+                onReload = onReload,
+                modifier = Modifier.weight(1f),
+            )
             TabCounter(count = tabCount, onClick = onTabs, tint = Ink.Dim)
             IconButton(onClick = onMenu) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "Menu", tint = Ink.Dim)
@@ -192,12 +203,14 @@ private fun Omnibox(
     onGo: () -> Unit,
     onReload: () -> Unit,
     modifier: Modifier = Modifier,
+    translucent: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
 
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        color = if (translucent) Ink.Glass else MaterialTheme.colorScheme.surfaceContainerHighest,
+        border = if (translucent) BorderStroke(1.dp, Ink.Hairline) else null,
         modifier = modifier.padding(horizontal = 4.dp),
     ) {
         Row(
@@ -751,6 +764,7 @@ fun MenuSheet(
     onShare: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    onModes: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.navigationBarsPadding()) {
@@ -771,6 +785,7 @@ fun MenuSheet(
                 QuickAction(Icons.Filled.AutoAwesome, "Notes", onNotes)
             }
             HorizontalDivider()
+            MenuRow(Icons.Filled.AutoAwesome, "Modes", onModes)
             MenuRow(Icons.Filled.History, "History", onHistory)
             MenuRow(Icons.Filled.Settings, "Settings", onSettings)
             if (tab != null) {

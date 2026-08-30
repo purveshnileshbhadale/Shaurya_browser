@@ -394,6 +394,29 @@ and the nav becomes a floating pill over our own backdrop. Over a web page
 both go back to solid surfaces, because a translucent pill on top of
 someone's white article is unreadable.
 
+### Modes on Android
+
+`modes/Modes.kt` ports the desktop's signature feature the same way the
+desktop built it: a mode is a *document*, never a branch. Nothing knows which
+modes exist — the switcher renders whatever is in `ALL`, the theme reads
+`accent`, the flags are consulted by name.
+
+The honesty problem is that the desktop modes swap whole panels — a terminal,
+a REST client, a teleprompter — that do not exist in this app. Claiming
+"Programmer Mode" enables tooling here when it only recolours the chrome
+would be a feature that exists in a changelog and nowhere else. So each mode
+states what it changes *on this device*, the switcher shows that text, and
+`ModesTest` asserts the pairing: exactly one mode may report altering
+behaviour, and any mode that sets a behaviour flag must also say so in words.
+
+Every mode does change something real and visible — the accent drives the
+whole theme *and* the start page's aurora, which is derived from it rather
+than hardcoded, so switching to Student repaints the backdrop blue. Ghost
+additionally stops history being written, stops thumbnails being captured,
+forces the HTTPS upgrade, and tells the blocker to ignore per-site protection
+exceptions: an exception is a standing convenience for a site you trust, and
+a mode whose claim is that it leaves nothing behind cannot honour one.
+
 ### Shaurya Search
 
 The name could imply more than it delivers, so the code says plainly what it

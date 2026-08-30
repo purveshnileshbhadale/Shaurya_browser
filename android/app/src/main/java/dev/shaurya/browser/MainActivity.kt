@@ -43,6 +43,7 @@ import dev.shaurya.browser.ui.AuroraBackground
 import dev.shaurya.browser.ui.BookmarksSheet
 import dev.shaurya.browser.ui.HistorySheet
 import dev.shaurya.browser.ui.LocalReducedMotion
+import dev.shaurya.browser.ui.ModeSheet
 import dev.shaurya.browser.ui.NewTabPage
 import dev.shaurya.browser.ui.SearchScreen
 import dev.shaurya.browser.ui.SettingsSheet
@@ -106,7 +107,11 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
 
-            ShauryaTheme(accent = model.store.settings.accent, themeMode = model.store.settings.theme) {
+            // The mode's accent drives the whole theme, so switching mode
+            // repaints the browser rather than changing a couple of buttons.
+            val activeMode by model.mode.collectAsStateWithLifecycle()
+            val accentHex = remember(activeMode) { "#%06X".format(activeMode.accent and 0xFFFFFF) }
+            ShauryaTheme(accent = accentHex, themeMode = model.store.settings.theme) {
                 // Paint the WebView's own backing to match, or every
                 // navigation flashes white before the page paints — the most
                 // noticeable remaining seam in a dark theme. Remembered as
@@ -139,6 +144,9 @@ class MainActivity : ComponentActivity() {
         val view = webViews[tabId] ?: return
         if (view.width <= 0 || view.height <= 0) return
         if (model.tabs.value.firstOrNull { it.id == tabId }?.incognito == true) return
+        // Ghost keeps no picture of what was on screen, for the same reason a
+        // private tab does not.
+        if (!model.mode.value.keepThumbnails) return
 
         val scale = 0.32f
         val width = (view.width * scale).toInt().coerceAtLeast(1)
@@ -297,6 +305,7 @@ class MainActivity : ComponentActivity() {
         val playingTitle by model.playingTitle.collectAsStateWithLifecycle()
         val playingArtist by model.playingArtist.collectAsStateWithLifecycle()
         val seedOnly by model.seedOnly.collectAsStateWithLifecycle()
+        val mode by model.mode.collectAsStateWithLifecycle()
         val stats by model.stats.collectAsStateWithLifecycle()
         val bookmarks by model.bookmarks.collectAsStateWithLifecycle()
         val history by model.history.collectAsStateWithLifecycle()
@@ -415,7 +424,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (onNewTab) {
-                        AuroraBackground {
+                        AuroraBackground(accent = mode.accent) {
                             NewTabPage(
                                 blocked = stats.blocked,
                                 httpsUpgrades = stats.httpsUpgrades,
@@ -426,7 +435,6 @@ class MainActivity : ComponentActivity() {
                                         .map { TopSite(it.url, it.title) }
                                 },
                                 incognito = active?.incognito == true,
-                                onSearch = { editingAddress = true },
                                 onOpenSite = { navigate(activeId, it) },
                             )
                         }
@@ -563,6 +571,7 @@ class MainActivity : ComponentActivity() {
                 },
                 onHistory = { sheet = Sheet.HISTORY },
                 onSettings = { sheet = Sheet.SETTINGS },
+                onModes = { sheet = Sheet.MODES },
             )
 
             Sheet.HISTORY -> HistorySheet(
@@ -579,6 +588,15 @@ class MainActivity : ComponentActivity() {
                 bookmarks = bookmarks,
                 onOpen = { navigate(activeId, it); sheet = null },
                 onRemove = { model.removeBookmark(it) },
+                onDismiss = { sheet = null },
+            )
+
+            Sheet.MODES -> ModeSheet(
+                activeId = mode.id,
+                onPick = { id ->
+                    model.setMode(id)
+                    scope.launch { snackbar.showSnackbar("${dev.shaurya.browser.modes.Modes.byId(id).name} mode") }
+                },
                 onDismiss = { sheet = null },
             )
 
@@ -606,7 +624,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Which bottom sheet is open. One at a time, by construction. */
-    private enum class Sheet { SHIELDS, MENU, HISTORY, BOOKMARKS, SETTINGS }
+    private enum class Sheet { SHIELDS, MENU, HISTORY, BOOKMARKS, SETTINGS, MODES }
 
     /**
      * Load a URL in a tab.
@@ -736,7 +754,8 @@ class MainActivity : ComponentActivity() {
             ): Boolean {
                 val url = request.url.toString()
                 // HTTPS-only: upgrade rather than load plaintext.
-                if (model.store.settings.httpsOnly && url.startsWith("http://") &&
+                if ((model.store.settings.httpsOnly || model.mode.value.forceHttps) &&
+                    url.startsWith("http://") &&
                     !isLocalAddress(request.url.host)
                 ) {
                     model.recordHttpsUpgrade(tabId)

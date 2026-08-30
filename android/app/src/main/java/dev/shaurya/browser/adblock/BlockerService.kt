@@ -66,6 +66,16 @@ class BlockerService(private val context: Context) {
     private val siteExceptions = HashSet<String>()
 
     /**
+     * Ignore those exceptions entirely.
+     *
+     * Set by Ghost Mode. An exception is a standing convenience for a site
+     * you trust; a mode whose claim is that it leaves nothing behind cannot
+     * also honour one.
+     */
+    @Volatile
+    var ignoreExceptions: Boolean = false
+
+    /**
      * Called whenever the index is replaced.
      *
      * The UI needs to know when protection goes from "seed only" to real
@@ -210,7 +220,7 @@ class BlockerService(private val context: Context) {
         if (!url.startsWith("http")) return null
 
         val host = FilterEngine.hostOf(pageUrl?.lowercase() ?: "")
-        if (host != null && FilterEngine.baseDomain(host) in siteExceptions) return null
+        if (!ignoreExceptions && host != null && FilterEngine.baseDomain(host) in siteExceptions) return null
 
         val verdict = engine.match(url, pageUrl, resourceTypeOf(request))
         if (!verdict.block) return null

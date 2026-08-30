@@ -46,7 +46,6 @@ fun NewTabPage(
     topSites: List<TopSite>,
     recent: List<TopSite>,
     incognito: Boolean,
-    onSearch: () -> Unit,
     onOpenSite: (String) -> Unit,
 ) {
     val greeting = remember { Accents.greeting(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
@@ -83,11 +82,8 @@ fun NewTabPage(
             )
         }
 
-        Spacer(Modifier.height(20.dp))
-        GlassSearch(onClick = onSearch)
-
         if (!incognito) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(18.dp))
             ShieldLine(blocked = blocked, httpsUpgrades = httpsUpgrades)
         }
 
@@ -113,30 +109,6 @@ fun NewTabPage(
         }
 
         Spacer(Modifier.height(28.dp))
-    }
-}
-
-@Composable
-private fun GlassSearch(onClick: () -> Unit) {
-    Row(
-        Modifier
-            .padding(horizontal = 20.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(Ink.Glass)
-            .border(1.dp, Ink.Hairline, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 15.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Filled.Search,
-            contentDescription = null,
-            tint = Ink.Dim,
-            modifier = Modifier.size(19.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text("Search or enter address", fontSize = 15.sp, color = Ink.Dim)
     }
 }
 

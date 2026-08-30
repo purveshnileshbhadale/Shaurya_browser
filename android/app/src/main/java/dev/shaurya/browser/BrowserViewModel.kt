@@ -66,6 +66,17 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
     private val _settings = MutableStateFlow(store.settings)
     val settings: StateFlow<dev.shaurya.browser.data.Settings> = _settings.asStateFlow()
 
+    private val _mode = MutableStateFlow(dev.shaurya.browser.modes.Modes.byId(store.settings.mode))
+    val mode: StateFlow<dev.shaurya.browser.modes.Mode> = _mode.asStateFlow()
+
+    fun setMode(id: String) {
+        updateSettings { it.copy(mode = id) }
+        _mode.value = dev.shaurya.browser.modes.Modes.byId(id)
+        // Ghost ignores per-site exceptions, so the blocker has to be told;
+        // it reads this at request time, not at startup.
+        blocker.ignoreExceptions = _mode.value.ignoreSiteExceptions
+    }
+
     /** Per-tab count of http:// URLs rewritten to https://. */
     private val httpsUpgrades = HashMap<Long, Int>()
 
@@ -193,6 +204,7 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         // "Shields off for this site" must survive a restart, or the setting
         // is a gesture rather than a preference.
         blocker.restoreExceptions(store.settings.shieldExceptions)
+        blocker.ignoreExceptions = dev.shaurya.browser.modes.Modes.byId(store.settings.mode).ignoreSiteExceptions
         viewModelScope.launch { blocker.initialise() }
         restoreOrOpenBlank()
     }
@@ -265,8 +277,9 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         val tab = _tabs.value.firstOrNull { it.id == id } ?: return
         blocker.resetCount(id)
         updateTab(id) { it.copy(url = url, title = title) }
-        store.recordVisit(url, title, tab.incognito)
-        if (!tab.incognito) _history.value = store.history.toList()
+        // Ghost keeps no record, exactly as a private tab does not.
+        store.recordVisit(url, title, tab.incognito || !_mode.value.keepHistory)
+        if (!tab.incognito && _mode.value.keepHistory) _history.value = store.history.toList()
         // The page is done, so fold its blocks into the lifetime totals.
         flushStats()
         persistSession()

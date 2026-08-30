@@ -40,6 +40,8 @@ data class Settings(
     val restoreTabs: Boolean = true,
     /** Sites the user has turned shields off for, by registrable domain. */
     val shieldExceptions: List<String> = emptyList(),
+    /** Active mode id; see modes/Modes.kt. */
+    val mode: String = "default",
 )
 
 @Serializable
