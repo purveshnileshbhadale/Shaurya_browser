@@ -309,9 +309,45 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         return searchUrl(text)
     }
 
+    /** Is Shaurya Search the chosen engine? */
+    val shauryaSearch: Boolean get() = store.settings.searchEngine == "shaurya"
+
+    /** Which external engine a web hand-off should lead with. */
+    val webProvider: String
+        get() = store.settings.searchEngine.takeIf { it != "shaurya" } ?: "duckduckgo"
+
+    /** Would this input be a web search rather than a URL? */
+    fun isWebSearch(input: String): Boolean =
+        resolveInput(input).startsWith(searchUrl(""))
+
+    /** Everything Shaurya Search can offer for a query. */
+    fun searchResults(query: String): dev.shaurya.browser.search.ShauryaSearch.Results {
+        val bookmarked = store.bookmarks.mapTo(HashSet()) { it.url }
+        val known = store.history.map {
+            dev.shaurya.browser.search.ShauryaSearch.Known(
+                url = it.url,
+                title = it.title,
+                visits = it.visits,
+                lastVisit = it.lastVisit,
+                bookmarked = it.url in bookmarked,
+            )
+        } + store.bookmarks
+            .filter { it.url !in store.history.map { h -> h.url }.toSet() }
+            .map {
+                dev.shaurya.browser.search.ShauryaSearch.Known(
+                    url = it.url, title = it.title, visits = 0,
+                    lastVisit = it.created, bookmarked = true,
+                )
+            }
+        return dev.shaurya.browser.search.ShauryaSearch.search(query, known, webProvider)
+    }
+
     private fun searchUrl(query: String): String {
         val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-        return when (store.settings.searchEngine) {
+        // Shaurya Search has no URL of its own; when it is the chosen engine
+        // the caller shows the in-app results screen instead. This fallback
+        // is what a web hand-off from that screen uses.
+        return when (webProvider) {
             "google" -> "https://www.google.com/search?q=$encoded"
             "brave" -> "https://search.brave.com/search?q=$encoded"
             "startpage" -> "https://www.startpage.com/sp/search?query=$encoded"

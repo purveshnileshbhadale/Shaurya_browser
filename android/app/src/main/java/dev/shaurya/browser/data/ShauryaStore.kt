@@ -27,7 +27,7 @@ data class Settings(
     val httpsOnly: Boolean = true,
     val blockThirdPartyCookies: Boolean = true,
     val sendGpc: Boolean = true,
-    val searchEngine: String = "duckduckgo",
+    val searchEngine: String = "shaurya",
     val theme: String = "system",
     val accent: String = "#6C8CFF",
     val aiEnabled: Boolean = true,

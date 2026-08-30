@@ -394,6 +394,33 @@ and the nav becomes a floating pill over our own backdrop. Over a web page
 both go back to solid surfaces, because a translucent pill on top of
 someone's white article is unreadable.
 
+### Shaurya Search
+
+The name could imply more than it delivers, so the code says plainly what it
+is. Shaurya has no web index; nobody builds one of those as a feature. What
+it has is the two things an external engine structurally cannot do, and it
+does both before anything is sent anywhere:
+
+- **`search/Instant.kt`** answers arithmetic, unit conversion and base
+  conversion on the device. A large share of what people type into a search
+  box is one of those, and every one is normally a round trip for an answer
+  the phone could have given. Deliberately no `eval` — the parser is
+  recursive descent over a fixed grammar, so there is no path from a typed
+  string to code execution. `InstantTest` includes a battery of hostile input
+  (deep nesting, huge exponents, 500-character strings) whose only contract
+  is that it returns.
+- **`search/ShauryaSearch.kt`** ranks the history and bookmarks already on
+  the device. Matching is tokenised, because people type phrases: requiring
+  the whole query as one substring meant a second word stopped narrowing
+  anything, which is the opposite of what typing more should do.
+
+Web results are then a labelled hand-off to the provider chosen in settings.
+The screen orders its blocks by how much the browser can vouch for them —
+what it computed, then what it already had, then someone else's index with
+their name on it — and says outright that Shaurya has no index of its own. A
+search page that blends its own results with a provider's and lets you guess
+which is which is doing something dishonest with the word "search".
+
 ### Tab thumbnails
 
 `WebView.draw` renders what is *currently composited*, so a backgrounded tab

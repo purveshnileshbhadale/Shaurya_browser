@@ -44,6 +44,7 @@ import dev.shaurya.browser.ui.BookmarksSheet
 import dev.shaurya.browser.ui.HistorySheet
 import dev.shaurya.browser.ui.LocalReducedMotion
 import dev.shaurya.browser.ui.NewTabPage
+import dev.shaurya.browser.ui.SearchScreen
 import dev.shaurya.browser.ui.SettingsSheet
 import dev.shaurya.browser.ui.ShieldsSheet
 import dev.shaurya.browser.ui.ShieldsState
@@ -308,6 +309,8 @@ class MainActivity : ComponentActivity() {
         var editingAddress by remember { mutableStateOf(false) }
         var sheet by remember { mutableStateOf<Sheet?>(null) }
         var showTabs by remember { mutableStateOf(false) }
+        // Non-null while Shaurya Search results are on screen.
+        var searchQuery by remember { mutableStateOf<String?>(null) }
 
         val active = tabs.firstOrNull { it.id == activeId }
         val onNewTab = active == null || active.url == BrowserViewModel.HOME_URL
@@ -327,6 +330,7 @@ class MainActivity : ComponentActivity() {
         // then leaves the app. Registering these as ordered handlers is also
         // what lets predictive back animate the right destination.
         BackHandler(enabled = showTabs) { showTabs = false }
+        BackHandler(enabled = !showTabs && searchQuery != null) { searchQuery = null }
         BackHandler(enabled = !showTabs && editingAddress) {
             editingAddress = false
             addressText = active?.url.orEmpty()
@@ -355,8 +359,15 @@ class MainActivity : ComponentActivity() {
                         onTextChange = { addressText = it },
                         onEditingChange = { editingAddress = it },
                         onGo = {
-                            navigate(activeId, model.resolveInput(addressText))
+                            val typed = addressText.trim()
                             editingAddress = false
+                            // A URL is still a URL. Only an actual search goes
+                            // to Shaurya Search, and only if it is the engine.
+                            if (model.shauryaSearch && typed.isNotEmpty() && model.isWebSearch(typed)) {
+                                searchQuery = typed
+                            } else {
+                                navigate(activeId, model.resolveInput(typed))
+                            }
                         },
                         onReload = {
                             if (active?.loading == true) webViews[activeId]?.stopLoading()
@@ -428,8 +439,17 @@ class MainActivity : ComponentActivity() {
                         val suggestions = model.suggestions(addressText)
                         if (suggestions.isNotEmpty()) {
                             SuggestionList(suggestions) { url ->
-                                navigate(activeId, url)
                                 editingAddress = false
+                                val typed = addressText.trim()
+                                if (model.shauryaSearch && model.isWebSearch(typed) &&
+                                    url == model.resolveInput(typed)
+                                ) {
+                                    // They picked "search for X" rather than a
+                                    // history entry, so honour the engine.
+                                    searchQuery = typed
+                                } else {
+                                    navigate(activeId, url)
+                                }
                             }
                         }
                     }
@@ -447,6 +467,23 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+            }
+
+            searchQuery?.let { q ->
+                SearchScreen(
+                    query = q,
+                    results = remember(q, history) { model.searchResults(q) },
+                    onOpen = { url ->
+                        searchQuery = null
+                        navigate(activeId, url)
+                    },
+                    onEditQuery = {
+                        addressText = q
+                        searchQuery = null
+                        editingAddress = true
+                    },
+                    onDismiss = { searchQuery = null },
+                )
             }
 
             if (showTabs) {

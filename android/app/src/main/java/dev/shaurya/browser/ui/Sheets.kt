@@ -149,8 +149,18 @@ fun SettingsSheet(
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             SectionLabel("Search engine")
+            Text(
+                "Shaurya answers calculations and conversions on the device and "
+                    + "searches your own history and bookmarks, then offers to "
+                    + "hand the query to a web provider. It has no web index of "
+                    + "its own.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+            )
             ChoiceRow(
                 options = listOf(
+                    "shaurya" to "Shaurya",
                     "duckduckgo" to "DuckDuckGo",
                     "startpage" to "Startpage",
                     "brave" to "Brave Search",
