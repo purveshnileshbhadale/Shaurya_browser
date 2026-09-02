@@ -1024,12 +1024,15 @@ fun AssistantSheet(
             if (state.messages.isEmpty()) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                     Text(
+                        // The "+" stays at the end of the line: inside a
+                        // block body a leading "+" is a unary plus on the
+                        // next string, not a continuation of this one.
                         if (contextShared) {
-                            "Ask about the page you are reading. Its text is sent to the "
-                                + "model for this request only."
+                            "Ask about the page you are reading. Its text is sent to " +
+                                "the model for this request only."
                         } else {
-                            "The page is muted, so the assistant answers from the "
-                                + "conversation alone and is not shown what you are reading."
+                            "The page is muted, so the assistant answers from the " +
+                                "conversation alone and is not shown what you are reading."
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1157,9 +1160,10 @@ private fun ProvenanceBadge(provider: String, isLocal: Boolean) {
             )
             Spacer(Modifier.width(5.dp))
             Text(
-                // The provider's own name after the category, because "hosted
-                // endpoint" alone does not tell you *whose*.
-                if (isLocal) "On this device" else "Hosted · $provider",
+                // Printed verbatim. The label already names the host for a
+                // hosted endpoint — "hosted endpoint" alone does not tell you
+                // *whose* — and distinguishes this device from this network.
+                provider,
                 style = MaterialTheme.typography.labelSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
