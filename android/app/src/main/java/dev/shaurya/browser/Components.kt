@@ -204,14 +204,20 @@ private fun Omnibox(
     onReload: () -> Unit,
     modifier: Modifier = Modifier,
     translucent: Boolean = false,
+    /** Inside the floating capsule the pill already has its own container. */
+    bare: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
 
     Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = if (translucent) Ink.Glass else MaterialTheme.colorScheme.surfaceContainerHighest,
-        border = if (translucent) BorderStroke(1.dp, Ink.Hairline) else null,
-        modifier = modifier.padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(Radii.Bar),
+        color = when {
+            bare -> Color.Transparent
+            translucent -> Ink.Glass
+            else -> MaterialTheme.colorScheme.surfaceContainerHighest
+        },
+        border = if (translucent && !bare) BorderStroke(1.dp, Ink.Hairline) else null,
+        modifier = modifier.padding(horizontal = if (bare) 0.dp else 4.dp),
     ) {
         Row(
             Modifier.padding(start = 12.dp, end = 2.dp).heightIn(min = 42.dp),
@@ -311,6 +317,75 @@ private fun TabCounter(count: Int, onClick: () -> Unit, tint: Color? = null) {
 // ---------------------------------------------------------------------------
 // Bottom navigation
 // ---------------------------------------------------------------------------
+
+/** Corner radii, one place, so the whole app agrees. */
+object Radii {
+    val Bar = 12.dp        // address bar, cards
+    val Card = 12.dp
+    val Sheet = 16.dp
+    val Drawer = 24.dp     // bottom drawer sheets
+    val Pill = 28.dp       // the floating nav and omnibox capsule
+}
+
+/**
+ * The address bar, anchored to the bottom and floating over the page.
+ *
+ * The default position: on a tall phone the top of the screen is out of reach
+ * of a thumb, and the address bar is the control reached for most often. It
+ * floats rather than sitting in a bar so the page behind it stays visible —
+ * a browser that permanently reserves two strips of a 6-inch screen for
+ * chrome has spent the screen on itself.
+ */
+@Composable
+fun FloatingOmnibox(
+    text: String,
+    editing: Boolean,
+    tab: BrowserViewModel.Tab?,
+    tabCount: Int,
+    blockedCount: Int,
+    shieldsOnHere: Boolean,
+    seedOnly: Boolean,
+    onTextChange: (String) -> Unit,
+    onEditingChange: (Boolean) -> Unit,
+    onGo: () -> Unit,
+    onReload: () -> Unit,
+    onShields: () -> Unit,
+    onTabs: () -> Unit,
+    onMenu: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(Radii.Pill))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radii.Pill))
+            .padding(start = 4.dp, end = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ShieldButton(
+            blocked = blockedCount,
+            enabledHere = shieldsOnHere,
+            seedOnly = seedOnly,
+            onClick = onShields,
+        )
+        Omnibox(
+            text = text,
+            editing = editing,
+            tab = tab,
+            onTextChange = onTextChange,
+            onEditingChange = onEditingChange,
+            onGo = onGo,
+            onReload = onReload,
+            modifier = Modifier.weight(1f),
+            bare = true,
+        )
+        TabCounter(count = tabCount, onClick = onTabs)
+        IconButton(onClick = onMenu) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "Menu")
+        }
+    }
+}
 
 /**
  * The controls, where the thumb is.
@@ -667,9 +742,37 @@ private fun TabCard(
     onSelect: () -> Unit,
     onClose: () -> Unit,
 ) {
+    // Swipe either way to close. `confirmValueChange` closes the tab and then
+    // returns false, so the box springs back rather than animating a card off
+    // screen that the recomposition is about to remove anyway — letting both
+    // happen leaves a gap in the grid for the length of the animation.
+    val dismiss = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value != SwipeToDismissBoxValue.Settled) onClose()
+            false
+        },
+    )
+    SwipeToDismissBox(
+        state = dismiss,
+        backgroundContent = {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(Radii.Card))
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        },
+    ) {
     Card(
         onClick = onSelect,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(Radii.Card),
         colors = CardDefaults.cardColors(
             containerColor = if (tab.incognito) MaterialTheme.colorScheme.inverseSurface
             else MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -698,6 +801,18 @@ private fun TabCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
+                // A tab making noise is the one you are looking for when you
+                // open this screen, so it gets a mark of its own rather than
+                // relying on the title.
+                if (tab.audible) {
+                    Icon(
+                        Icons.Filled.MusicNote,
+                        contentDescription = "Playing audio",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                }
                 IconButton(onClick = onClose, modifier = Modifier.size(30.dp)) {
                     Icon(
                         Icons.Filled.Close,
@@ -727,6 +842,27 @@ private fun TabCard(
                         contentScale = ContentScale.Crop,
                         alignment = Alignment.TopCenter,
                     )
+                    // Over a thumbnail the domain is the label that survives
+                    // a glance; the title above is often the same on every
+                    // tab of a site. It is only drawn when there is a picture
+                    // to caption — without one the host is already the whole
+                    // body of the card.
+                    Text(
+                        hostOf(tab.url),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            // A fixed scrim rather than a theme colour: what
+                            // is behind it is the page's own pixels, not our
+                            // surface, so the contrast has to come from here.
+                            .background(Color(0xCC101014))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
                 } else {
                     Text(
                         hostOf(tab.url),
@@ -739,6 +875,7 @@ private fun TabCard(
                 }
             }
         }
+    }
     }
 }
 
@@ -836,9 +973,16 @@ private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
 @Composable
 fun AssistantSheet(
     state: BrowserViewModel.AssistantState,
+    /** Human-readable name of the endpoint answering, from AiClient. */
+    provider: String,
+    isLocal: Boolean,
+    contextShared: Boolean,
+    onContextSharedChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onSend: (String) -> Unit,
     onClear: () -> Unit,
+    onConfirmAction: () -> Unit,
+    onDismissAction: () -> Unit,
 ) {
     var draft by remember { mutableStateOf("") }
 
@@ -863,11 +1007,30 @@ fun AssistantSheet(
                 TextButton(onClick = onClear, enabled = state.messages.isNotEmpty()) { Text("Clear") }
             }
 
+            // Where the answer comes from, and what it can see. Both are
+            // stated on the surface rather than buried in settings: an
+            // assistant that quietly ships the page you are reading to a
+            // remote endpoint is doing something the user should not have to
+            // go looking for.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ProvenanceBadge(provider = provider, isLocal = isLocal)
+                Spacer(Modifier.width(8.dp))
+                ContextBadge(shared = contextShared, onToggle = onContextSharedChange)
+            }
+
             if (state.messages.isEmpty()) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                     Text(
-                        "Ask about the page you are reading. Its text is sent to the model "
-                            + "for this request only.",
+                        if (contextShared) {
+                            "Ask about the page you are reading. Its text is sent to the "
+                                + "model for this request only."
+                        } else {
+                            "The page is muted, so the assistant answers from the "
+                                + "conversation alone and is not shown what you are reading."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -923,6 +1086,14 @@ fun AssistantSheet(
                 }
             }
 
+            state.pending?.let { action ->
+                ActionConfirmationCard(
+                    action = action,
+                    onConfirm = onConfirmAction,
+                    onCancel = onDismissAction,
+                )
+            }
+
             state.error?.let { error ->
                 Text(
                     error,
@@ -960,6 +1131,121 @@ fun AssistantSheet(
                         Icon(Icons.Filled.Send, contentDescription = "Send")
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Where the answer is being computed. */
+@Composable
+private fun ProvenanceBadge(provider: String, isLocal: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(Radii.Pill),
+        color = if (isLocal) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = if (isLocal) MaterialTheme.colorScheme.onPrimaryContainer
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                if (isLocal) Icons.Filled.Lock else Icons.Filled.Public,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+            )
+            Spacer(Modifier.width(5.dp))
+            Text(
+                // The provider's own name after the category, because "hosted
+                // endpoint" alone does not tell you *whose*.
+                if (isLocal) "On this device" else "Hosted · $provider",
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Whether the page's text goes with the question, and a way to change it. */
+@Composable
+private fun ContextBadge(shared: Boolean, onToggle: (Boolean) -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(Radii.Pill),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.clickable { onToggle(!shared) },
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                if (shared) Icons.Filled.Description else Icons.Filled.VisibilityOff,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+            )
+            Spacer(Modifier.width(5.dp))
+            Text(
+                if (shared) "Page shared" else "Page muted",
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
+/**
+ * The card that stands between a suggestion and an action.
+ *
+ * The assistant reads pages it did not write, and a page can contain text
+ * aimed at the model rather than at the reader. The defence is structural:
+ * nothing the assistant proposes runs until a person taps Confirm, and the
+ * card says in plain words what would happen if they did. A prompt injection
+ * that gets this far has earned a dialog the user can decline.
+ */
+@Composable
+fun ActionConfirmationCard(
+    action: BrowserViewModel.PendingAction,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(Radii.Sheet),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(action.title, style = MaterialTheme.typography.titleSmall)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                action.detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                action.consequence,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onCancel) { Text("Not now") }
+                Spacer(Modifier.width(8.dp))
+                // Never the default focus and never auto-confirmed: this tap
+                // is the whole security boundary.
+                Button(onClick = onConfirm) { Text("Confirm") }
             }
         }
     }

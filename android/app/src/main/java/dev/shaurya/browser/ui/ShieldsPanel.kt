@@ -27,6 +27,8 @@ data class ShieldsState(
     val httpsUpgradesHere: Int,
     val secure: Boolean,
     val seedOnly: Boolean,
+    /** Network rules the engine actually has in memory right now. */
+    val rulesLoaded: Int,
 )
 
 /**
@@ -90,12 +92,18 @@ fun ShieldsSheet(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Text(
-                        "Limited protection — the full filter lists have not "
-                            + "downloaded yet. Only the built-in starter rules are active.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(12.dp),
-                    )
+                    Column(Modifier.padding(12.dp)) {
+                        Text(
+                            "Limited Protection (Seed List Active)",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "The full filter lists have not downloaded yet. Only "
+                                + "the built-in starter rules are active.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
 
@@ -113,6 +121,11 @@ fun ShieldsSheet(
                     modifier = Modifier.weight(1f),
                 )
                 ShieldStat(
+                    value = Stats.formatBytes(Stats.bytesSaved(state.blockedHere.toLong())),
+                    label = "Data not\ndownloaded",
+                    modifier = Modifier.weight(1f),
+                )
+                ShieldStat(
                     value = if (state.secure) "HTTPS" else "HTTP",
                     label = if (state.secure) "Encrypted\nconnection" else "Not\nencrypted",
                     tint = if (state.secure) MaterialTheme.colorScheme.primary
@@ -120,6 +133,26 @@ fun ShieldsSheet(
                     modifier = Modifier.weight(1f),
                 )
             }
+
+            // The bytes figure above is arithmetic, not measurement — the
+            // request was cancelled, so its real size is unknowable. Saying
+            // where the number comes from is the difference between a
+            // statistic and a boast.
+            Text(
+                "Estimated at ~45 KB per request",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
+
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (state.rulesLoaded > 0) "${Stats.formatCount(state.rulesLoaded.toLong())} active rules loaded"
+                else "No rules loaded",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
@@ -148,9 +181,12 @@ private fun ShieldStat(
             value,
             // Deliberately large. The count is the whole reason anyone opens
             // this sheet, and a number set at body size reads as a footnote.
-            fontSize = 26.sp,
+            // Four of these share the width, so a long value ("1.2 MB")
+            // steps down rather than wrapping mid-number.
+            fontSize = if (value.length > 4) 17.sp else 24.sp,
             fontWeight = FontWeight.Bold,
             color = tint,
+            maxLines = 1,
         )
         Spacer(Modifier.height(4.dp))
         Text(

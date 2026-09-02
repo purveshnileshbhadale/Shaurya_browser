@@ -114,6 +114,14 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
     fun httpsUpgradesFor(tabId: Long): Int =
         synchronized(httpsUpgrades) { httpsUpgrades[tabId] ?: 0 }
 
+    /** How many network rules are loaded right now. */
+    val rulesLoaded: Int get() = blocker.engine.networkRuleCount
+
+    /** Where inference runs, for the assistant's badge. */
+    val aiProvider: String get() = dev.shaurya.browser.ai.AiClient.providerLabel(store.settings.aiEndpoint)
+
+    val aiIsLocal: Boolean get() = dev.shaurya.browser.ai.AiClient.isLocal(store.settings.aiEndpoint)
+
     /** Most-visited sites for the new tab page. */
     fun topSites(): List<dev.shaurya.browser.ui.TopSite> =
         store.topSites().map { dev.shaurya.browser.ui.TopSite(it.url, it.title) }
@@ -177,6 +185,7 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
      *               one page cannot claim to be another
      */
     fun reportPlayback(tabId: Long, playing: Boolean, title: String, artist: String) {
+        updateTab(tabId) { it.copy(audible = playing) }
         if (playing) {
             _playingTabId.value = tabId
             _playingTitle.value = title
@@ -223,6 +232,8 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         val canGoForward: Boolean = false,
         val incognito: Boolean = false,
         val blockedCount: Int = 0,
+        /** Producing sound right now, for the badge on the tab card. */
+        val audible: Boolean = false,
     )
 
     private fun restoreOrOpenBlank() {
@@ -406,7 +417,34 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
         val busy: Boolean = false,
         val messages: List<Message> = emptyList(),
         val error: String? = null,
+        /**
+         * A proposed action awaiting an explicit tap.
+         *
+         * The assistant can put one of these on screen; it cannot carry one
+         * out. That is the whole defence against a page that contains
+         * instructions aimed at the model rather than the reader — the worst
+         * a prompt injection achieves is a card the user declines.
+         */
+        val pending: PendingAction? = null,
     )
+
+    /** Something the assistant wants to do, and what it would cost. */
+    data class PendingAction(
+        val title: String,
+        val detail: String,
+        val consequence: String,
+        val run: () -> Unit,
+    )
+
+    fun proposeAction(action: PendingAction) = _assistant.update { it.copy(pending = action) }
+
+    fun confirmPendingAction() {
+        val action = _assistant.value.pending ?: return
+        _assistant.update { it.copy(pending = null) }
+        action.run()
+    }
+
+    fun dismissPendingAction() = _assistant.update { it.copy(pending = null) }
 
     data class Message(val role: String, val text: String)
 

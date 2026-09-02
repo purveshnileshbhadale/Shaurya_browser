@@ -176,6 +176,19 @@ fun SettingsSheet(
                 selected = settings.theme,
             ) { value -> onChange { it.copy(theme = value) } }
 
+            SectionLabel("Address bar")
+            Text(
+                "At the bottom it is within thumb reach on a tall phone; at "
+                    + "the top it sits where a desktop browser puts it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+            )
+            ChoiceRow(
+                options = listOf("bottom" to "Bottom", "top" to "Top"),
+                selected = settings.omniboxPosition,
+            ) { value -> onChange { it.copy(omniboxPosition = value) } }
+
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             SectionLabel("Tabs")
             SwitchRow(

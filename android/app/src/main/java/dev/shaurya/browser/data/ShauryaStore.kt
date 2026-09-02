@@ -42,6 +42,14 @@ data class Settings(
     val shieldExceptions: List<String> = emptyList(),
     /** Active mode id; see modes/Modes.kt. */
     val mode: String = "default",
+    /**
+     * Where the address bar lives: "bottom" or "top".
+     *
+     * Bottom by default, for one-handed reach on a tall phone. A setting
+     * rather than a fixed choice because the right answer genuinely differs
+     * by hand size and by habit, and both have been asked for here.
+     */
+    val omniboxPosition: String = "bottom",
 )
 
 @Serializable

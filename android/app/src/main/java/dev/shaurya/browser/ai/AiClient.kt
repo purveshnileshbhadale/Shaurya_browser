@@ -30,6 +30,29 @@ import java.net.URL
  */
 class AiClient(private val store: ShauryaStore) {
 
+    companion object Provenance {
+        /**
+         * Where inference is actually happening, for the badge on the sheet.
+         *
+         * Worth showing rather than assuming: the difference between the page
+         * text staying on the device and being posted to someone's server is
+         * the single most consequential thing about the assistant, and it is
+         * decided by a URL in settings that nothing else surfaces.
+         */
+        fun providerLabel(endpoint: String): String {
+            val e = endpoint.trim().lowercase()
+            val local = e.startsWith("http://localhost") ||
+                e.startsWith("http://127.0.0.1") ||
+                e.startsWith("http://[::1]") ||
+                e.contains("://10.") || e.contains("://192.168.") ||
+                e.contains("ollama")
+            return if (local) "On this device" else "Hosted endpoint"
+        }
+
+        /** True when nothing leaves the phone for inference. */
+        fun isLocal(endpoint: String): Boolean = providerLabel(endpoint) == "On this device"
+    }
+
     private val json = Json { ignoreUnknownKeys = true }
 
     val hasApiKey: Boolean get() = !store.secret(KEY_ANTHROPIC).isNullOrBlank()

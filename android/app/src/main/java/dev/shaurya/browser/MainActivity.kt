@@ -28,6 +28,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
@@ -89,7 +97,11 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            val dark = isDarkTheme(model.store.settings.theme)
+            // Read here rather than inside the theme so the system bars and
+            // the theme agree on the same frame.
+            val activeMode by model.mode.collectAsStateWithLifecycle()
+            val ghost = activeMode.id == "ghost"
+            val dark = ghost || isDarkTheme(model.store.settings.theme)
 
             // Transparent bars in both directions, but the *icon* colour has
             // to follow the theme: edge-to-edge means our own surface is what
@@ -109,9 +121,12 @@ class MainActivity : ComponentActivity() {
 
             // The mode's accent drives the whole theme, so switching mode
             // repaints the browser rather than changing a couple of buttons.
-            val activeMode by model.mode.collectAsStateWithLifecycle()
             val accentHex = remember(activeMode) { "#%06X".format(activeMode.accent and 0xFFFFFF) }
-            ShauryaTheme(accent = accentHex, themeMode = model.store.settings.theme) {
+            ShauryaTheme(
+                accent = accentHex,
+                themeMode = model.store.settings.theme,
+                matteBlack = ghost,
+            ) {
                 // Paint the WebView's own backing to match, or every
                 // navigation flashes white before the page paints — the most
                 // noticeable remaining seam in a dark theme. Remembered as
@@ -318,6 +333,11 @@ class MainActivity : ComponentActivity() {
         var editingAddress by remember { mutableStateOf(false) }
         var sheet by remember { mutableStateOf<Sheet?>(null) }
         var showTabs by remember { mutableStateOf(false) }
+        // Whether the assistant is shown the page. On by default — that is
+        // what the feature is for — but it is one tap to mute, and the sheet
+        // says which state it is in.
+        var sharePageWithAi by remember { mutableStateOf(true) }
+        val haptics = LocalHapticFeedback.current
         // Non-null while Shaurya Search results are on screen.
         var searchQuery by remember { mutableStateOf<String?>(null) }
 
@@ -352,11 +372,51 @@ class MainActivity : ComponentActivity() {
             if (!editingAddress) addressText = active?.url.orEmpty()
         }
 
-        Box(Modifier.fillMaxSize()) {
+        // Where the address bar goes. Bottom is the default — on a tall phone
+        // the top edge is out of thumb reach and this is the control reached
+        // for most — but it is a setting, because the opposite has been asked
+        // for too and neither answer is right for every hand.
+        val addressAtTop = settings.omniboxPosition == "top"
+
+        // The address bar's behaviour is the same wherever it is drawn, so the
+        // callbacks live out here and both layouts share them.
+        val onAddressGo: () -> Unit = {
+            val typed = addressText.trim()
+            editingAddress = false
+            // A URL is still a URL. Only an actual search goes to Shaurya
+            // Search, and only if it is the engine.
+            if (model.shauryaSearch && typed.isNotEmpty() && model.isWebSearch(typed)) {
+                searchQuery = typed
+            } else {
+                navigate(activeId, model.resolveInput(typed))
+            }
+        }
+        val onAddressReload: () -> Unit = {
+            if (active?.loading == true) webViews[activeId]?.stopLoading()
+            else webViews[activeId]?.reload()
+        }
+        val onOpenTabs: () -> Unit = {
+            // Photograph the tab being left *before* the switcher covers it:
+            // a WebView that is no longer composited draws as a blank
+            // rectangle.
+            captureThumbnail(activeId)
+            showTabs = true
+        }
+
+        Box(
+            Modifier
+                .fillMaxSize()
+                // Ghost Mode's edge light. `Modifier.blur` would be the
+                // obvious way to make it glow, but it needs API 31 and this
+                // app runs from 26, so the falloff is drawn instead: a few
+                // concentric strokes with dropping alpha, which is what a
+                // blurred line looks like anyway.
+                .then(if (mode.id == "ghost") Modifier.ghostGlow(Color(mode.accent)) else Modifier)
+        ) {
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbar) },
                 topBar = {
-                    TopBar(
+                    if (addressAtTop) TopBar(
                         text = addressText,
                         editing = editingAddress,
                         tab = active,
@@ -367,33 +427,35 @@ class MainActivity : ComponentActivity() {
                         minimal = onNewTab,
                         onTextChange = { addressText = it },
                         onEditingChange = { editingAddress = it },
-                        onGo = {
-                            val typed = addressText.trim()
-                            editingAddress = false
-                            // A URL is still a URL. Only an actual search goes
-                            // to Shaurya Search, and only if it is the engine.
-                            if (model.shauryaSearch && typed.isNotEmpty() && model.isWebSearch(typed)) {
-                                searchQuery = typed
-                            } else {
-                                navigate(activeId, model.resolveInput(typed))
-                            }
-                        },
-                        onReload = {
-                            if (active?.loading == true) webViews[activeId]?.stopLoading()
-                            else webViews[activeId]?.reload()
-                        },
+                        onGo = onAddressGo,
+                        onReload = onAddressReload,
                         onShields = { sheet = Sheet.SHIELDS },
-                        onTabs = {
-                            // Photograph the tab being left *before* the
-                            // switcher covers it: a WebView that is no longer
-                            // composited draws as a blank rectangle.
-                            captureThumbnail(activeId)
-                            showTabs = true
-                        },
+                        onTabs = onOpenTabs,
                         onMenu = { sheet = Sheet.MENU },
                     )
                 },
                 bottomBar = {
+                  // The window does not resize for the keyboard — this app
+                  // draws edge to edge, so the IME is an inset, not a resize.
+                  // Without this the address bar is behind the keyboard the
+                  // moment you type into it.
+                  Column(if (addressAtTop) Modifier else Modifier.imePadding()) {
+                    if (!addressAtTop) FloatingOmnibox(
+                        text = addressText,
+                        editing = editingAddress,
+                        tab = active,
+                        tabCount = tabs.size,
+                        blockedCount = active?.blockedCount ?: 0,
+                        shieldsOnHere = shieldsOnHere,
+                        seedOnly = seedOnly,
+                        onTextChange = { addressText = it },
+                        onEditingChange = { editingAddress = it },
+                        onGo = onAddressGo,
+                        onReload = onAddressReload,
+                        onShields = { sheet = Sheet.SHIELDS },
+                        onTabs = onOpenTabs,
+                        onMenu = { sheet = Sheet.MENU },
+                    )
                     BottomNav(
                         tab = active,
                         nowPlaying = nowPlaying,
@@ -413,9 +475,19 @@ class MainActivity : ComponentActivity() {
                         onPlayPause = { playingTabId?.let { evaluateMedia(it, "pause") } },
                         onOpenPlaying = { playingTabId?.let { model.activateTab(it) } },
                     )
+                  }
                 }
             ) { padding ->
-                Box(Modifier.padding(padding).fillMaxSize()) {
+                Box(
+                    Modifier
+                        .padding(padding)
+                        // With the bar at the bottom the Scaffold has no top
+                        // bar to inset against, and the app is edge to edge,
+                        // so the content would otherwise start underneath the
+                        // status bar.
+                        .then(if (addressAtTop) Modifier else Modifier.statusBarsPadding())
+                        .fillMaxSize()
+                ) {
                     // A new tab shows the start page rather than about:blank.
                     // The WebView stays composed underneath so its history and
                     // scroll position survive; it is simply covered.
@@ -446,17 +518,26 @@ class MainActivity : ComponentActivity() {
                     if (editingAddress) {
                         val suggestions = model.suggestions(addressText)
                         if (suggestions.isNotEmpty()) {
-                            SuggestionList(suggestions) { url ->
-                                editingAddress = false
-                                val typed = addressText.trim()
-                                if (model.shauryaSearch && model.isWebSearch(typed) &&
-                                    url == model.resolveInput(typed)
-                                ) {
-                                    // They picked "search for X" rather than a
-                                    // history entry, so honour the engine.
-                                    searchQuery = typed
-                                } else {
-                                    navigate(activeId, url)
+                            // Suggestions hang off the bar they belong to, so
+                            // they follow it to whichever edge it is on.
+                            Box(
+                                Modifier
+                                    .align(if (addressAtTop) Alignment.TopStart else Alignment.BottomStart)
+                                    .then(if (addressAtTop) Modifier else Modifier.imePadding())
+                            ) {
+                                SuggestionList(suggestions) { url ->
+                                    editingAddress = false
+                                    val typed = addressText.trim()
+                                    if (model.shauryaSearch && model.isWebSearch(typed) &&
+                                        url == model.resolveInput(typed)
+                                    ) {
+                                        // They picked "search for X" rather
+                                        // than a history entry, so honour the
+                                        // engine.
+                                        searchQuery = typed
+                                    } else {
+                                        navigate(activeId, url)
+                                    }
                                 }
                             }
                         }
@@ -522,8 +603,10 @@ class MainActivity : ComponentActivity() {
                     httpsUpgradesHere = model.httpsUpgradesFor(activeId),
                     secure = active?.url?.startsWith("https://") == true,
                     seedOnly = seedOnly,
+                    rulesLoaded = model.rulesLoaded,
                 ),
                 onToggleSite = { on ->
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     model.setShieldsOn(active?.url, on)
                     // The page has already loaded with the old policy, so the
                     // switch only means anything after a reload. Doing it
@@ -594,6 +677,10 @@ class MainActivity : ComponentActivity() {
             Sheet.MODES -> ModeSheet(
                 activeId = mode.id,
                 onPick = { id ->
+                    // Mode, shields and confirmation are the three taps that
+                    // change what the browser does rather than what it shows,
+                    // so each one is felt as well as seen.
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     model.setMode(id)
                     scope.launch { snackbar.showSnackbar("${dev.shaurya.browser.modes.Modes.byId(id).name} mode") }
                 },
@@ -612,13 +699,28 @@ class MainActivity : ComponentActivity() {
         if (assistant.open) {
             AssistantSheet(
                 state = assistant,
+                provider = model.aiProvider,
+                isLocal = model.aiIsLocal,
+                contextShared = sharePageWithAi,
+                onContextSharedChange = { sharePageWithAi = it },
                 onDismiss = { model.toggleAssistant() },
                 onSend = { question ->
-                    extractPageText(activeId) { text ->
-                        model.ask(question, text, active?.url, active?.title)
+                    if (sharePageWithAi) {
+                        extractPageText(activeId) { text ->
+                            model.ask(question, text, active?.url, active?.title)
+                        }
+                    } else {
+                        // Muted means the page is not read at all, not that it
+                        // is read and then withheld.
+                        model.ask(question, null, null, null)
                     }
                 },
                 onClear = { model.clearConversation() },
+                onConfirmAction = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    model.confirmPendingAction()
+                },
+                onDismissAction = { model.dismissPendingAction() },
             )
         }
     }
@@ -927,5 +1029,26 @@ class MainActivity : ComponentActivity() {
         return host == "localhost" || host == "127.0.0.1" || host.endsWith(".localhost") ||
             host.startsWith("192.168.") || host.startsWith("10.") ||
             Regex("^172\\.(1[6-9]|2\\d|3[01])\\.").containsMatchIn(host)
+    }
+}
+
+/**
+ * A soft accent edge, drawn on top of the content.
+ *
+ * Inset by half a stroke width so the brightest line lands fully on screen
+ * rather than half of it being clipped by the display's own edge.
+ */
+private fun Modifier.ghostGlow(accent: Color): Modifier = drawWithContent {
+    drawContent()
+    val layers = 5
+    repeat(layers) { i ->
+        val width = 1.5.dp.toPx() + i * 2.5.dp.toPx()
+        drawRoundRect(
+            color = accent.copy(alpha = 0.30f / (i + 1)),
+            topLeft = Offset(width / 2, width / 2),
+            size = Size(size.width - width, size.height - width),
+            cornerRadius = CornerRadius(22.dp.toPx()),
+            style = Stroke(width = width),
+        )
     }
 }

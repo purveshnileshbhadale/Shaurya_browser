@@ -48,12 +48,24 @@ fun ShauryaTheme(
     accent: String = "#6C8CFF",
     themeMode: String = "system",
     useDynamicColor: Boolean = true,
+    /**
+     * Ghost Mode's matte black.
+     *
+     * Not a taste choice. Ghost Mode's whole claim is that this session looks
+     * like nothing else you do, so the interface has to look like nothing
+     * else the browser does — and a light theme, or the wallpaper-derived
+     * palette, would carry the rest of the device into a window that is
+     * supposed to be sealed off from it. So it overrides both.
+     */
+    matteBlack: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val dark = isDarkTheme(themeMode)
+    val dark = matteBlack || isDarkTheme(themeMode)
     val context = LocalContext.current
 
     val scheme = when {
+        matteBlack -> remember(accent) { matteScheme(Palette.seedOf(accent)) }
+
         useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
 
@@ -164,20 +176,65 @@ fun brandedScheme(seed: Int, dark: Boolean): ColorScheme {
 }
 
 /**
+ * The dark scheme, dropped to true black.
+ *
+ * Every surface tone is pulled to the floor and the ramp between them is
+ * compressed rather than removed: at exactly one colour the interface loses
+ * all depth and a sheet stops reading as a sheet, so the containers still
+ * step, just by a few points instead of twenty.
+ */
+fun matteScheme(seed: Int): ColorScheme {
+    val base = brandedScheme(seed, dark = true)
+    fun ink(t: Int) = Color(Palette.tone(seed, t, chromaScale = 0.02f))
+    return base.copy(
+        background = Color.Black, onBackground = ink(92),
+        surface = Color.Black, onSurface = ink(92),
+        surfaceDim = Color.Black, surfaceBright = ink(14),
+        surfaceContainerLowest = Color.Black, surfaceContainerLow = ink(4),
+        surfaceContainer = ink(7), surfaceContainerHigh = ink(10),
+        surfaceContainerHighest = ink(14),
+        outline = ink(45), outlineVariant = ink(22),
+    )
+}
+
+/**
  * Type scale.
  *
- * Only the roles the browser actually uses are overridden, and only where the
- * default is wrong for this app: a URL and a page title are read at a glance
- * while scrolling a tab grid, so they are set slightly tighter and heavier
- * than Material's defaults, which are tuned for prose.
+ * The browser has two voices and they should not sound alike.
+ *
+ * **Its own** — mode names, shield counts, confirmation cards, anything the
+ * browser is asserting — is set heavier and tighter. **The web's** — page
+ * titles, URLs, an assistant answer that is really a page's words — is set at
+ * normal weight with prose line height. When a browser tells you a request
+ * was blocked, that sentence should not be typographically indistinguishable
+ * from a sentence the page wrote.
+ *
+ * Set on the platform family rather than a bundled Roboto Flex: the variable
+ * axes that make Flex worth having are only reachable on API 31+, the app
+ * runs from 26, and a 1.7 MB font shipped to serve half the install base is a
+ * poor trade for weights the system family already has.
  */
 private val ShauryaTypography = Typography().let { base ->
+    // The browser's own voice.
+    fun asserted(style: TextStyle) =
+        style.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp)
+
     base.copy(
-        titleMedium = base.titleMedium.copy(
-            fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp,
-        ),
+        titleMedium = asserted(base.titleMedium),
+        titleSmall = asserted(base.titleSmall),
+        // Counts, badges and switch labels — short, and always ours.
         labelLarge = base.labelLarge.copy(fontWeight = FontWeight.Medium),
-        bodyMedium = base.bodyMedium.copy(lineHeight = 20.sp),
+        labelMedium = base.labelMedium.copy(
+            fontWeight = FontWeight.Medium, letterSpacing = 0.1.sp,
+        ),
+        labelSmall = base.labelSmall.copy(fontWeight = FontWeight.Medium),
+
+        // The web's voice: prose, so prose metrics.
+        bodyMedium = base.bodyMedium.copy(
+            fontWeight = FontWeight.Normal, lineHeight = 20.sp,
+        ),
+        bodySmall = base.bodySmall.copy(fontWeight = FontWeight.Normal),
+
         // The address bar. Not monospaced — a URL in mono at 14sp fits far
         // fewer characters, and the host is the part that matters.
         bodyLarge = TextStyle(
