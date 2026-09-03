@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,7 +47,11 @@ fun NewTabPage(
     topSites: List<TopSite>,
     recent: List<TopSite>,
     incognito: Boolean,
+    mode: dev.shaurya.browser.modes.Mode,
+    tools: List<dev.shaurya.browser.modes.Tool>,
     onOpenSite: (String) -> Unit,
+    onOpenTool: (String) -> Unit,
+    onOpenModes: () -> Unit,
 ) {
     val greeting = remember { Accents.greeting(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
 
@@ -80,6 +85,14 @@ fun NewTabPage(
                 color = Ink.Primary,
                 lineHeight = 38.sp,
             )
+        }
+
+        Spacer(Modifier.height(16.dp))
+        ModeChip(mode = mode, onClick = onOpenModes)
+
+        if (tools.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            ToolRow(tools = tools, accent = Color(mode.accent), onOpen = onOpenTool)
         }
 
         if (!incognito) {
@@ -268,5 +281,107 @@ private fun RecentCard(entries: List<TopSite>, onOpen: (String) -> Unit) {
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/**
+ * The active mode, as a chip you can press.
+ *
+ * The desktop puts the mode switcher in the toolbar, where there is room for
+ * it. There is no room here, so the home page carries it instead — which is
+ * the right place anyway: a mode is a decision about the session, and the
+ * start of a session is when you make it.
+ */
+@Composable
+private fun ModeChip(mode: dev.shaurya.browser.modes.Mode, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .padding(horizontal = 22.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Ink.Glass)
+            .border(1.dp, Ink.Hairline, RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(Color(mode.accent)),
+        )
+        Spacer(Modifier.width(9.dp))
+        Text("${mode.name} mode", fontSize = 12.5.sp, color = Ink.Primary)
+        Spacer(Modifier.width(7.dp))
+        Text("Change", fontSize = 11.5.sp, color = Ink.Faint)
+    }
+}
+
+/**
+ * The tools this mode brings.
+ *
+ * A horizontal strip rather than a grid, because the count varies by mode and
+ * a grid with two items in it looks broken. Every tile here opens something
+ * that works — the tools a mode has on the desktop and cannot have here are
+ * listed in the mode sheet instead of appearing as dead tiles.
+ */
+@Composable
+private fun ToolRow(
+    tools: List<dev.shaurya.browser.modes.Tool>,
+    accent: Color,
+    onOpen: (String) -> Unit,
+) {
+    Column {
+        Text(
+            "TOOLS",
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.9.sp,
+            color = Ink.Faint,
+            modifier = Modifier.padding(start = 24.dp, bottom = 8.dp),
+        )
+        Row(
+            Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+        ) {
+            tools.forEach { tool ->
+                Column(
+                    Modifier
+                        .padding(end = 10.dp)
+                        .width(112.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Ink.Glass)
+                        .border(1.dp, Ink.Hairline, RoundedCornerShape(16.dp))
+                        .clickable { onOpen(tool.id) }
+                        .padding(12.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(accent),
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        tool.name,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Ink.Primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        tool.summary,
+                        fontSize = 10.5.sp,
+                        lineHeight = 13.sp,
+                        color = Ink.Faint,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
     }
 }

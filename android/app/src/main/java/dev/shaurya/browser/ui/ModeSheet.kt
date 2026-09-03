@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.shaurya.browser.modes.Mode
+import dev.shaurya.browser.modes.ModeTools
 import dev.shaurya.browser.modes.Modes
 
 /**
@@ -117,6 +118,40 @@ private fun ModeRow(mode: Mode, selected: Boolean, onPick: () -> Unit) {
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            val tools = ModeTools.toolsFor(mode.id)
+            if (tools.isNotEmpty()) {
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    "Tools: " + tools.joinToString(", ") { it.name },
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            // What the desktop has here and the phone does not, with the
+            // reason. Naming it is the difference between a limitation and a
+            // broken promise — and a "coming soon" button would be worse than
+            // either.
+            val missing = ModeTools.unavailableFor(mode.id)
+            if (missing.isNotEmpty() && selected) {
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "ON THE DESKTOP ONLY",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                missing.forEach { item ->
+                    Text(
+                        "· ${item.name} — ${item.reason}",
+                        fontSize = 10.5.sp,
+                        lineHeight = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
 

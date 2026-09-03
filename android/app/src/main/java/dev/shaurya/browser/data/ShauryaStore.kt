@@ -50,6 +50,23 @@ data class Settings(
      * by hand size and by habit, and both have been asked for here.
      */
     val omniboxPosition: String = "bottom",
+    /**
+     * Stop loading images.
+     *
+     * The desktop calls this Turbo. Here it is what it is: images are most of
+     * a page's bytes, and on a metered connection not fetching them is the
+     * single biggest thing a browser can do about that.
+     */
+    val blockImages: Boolean = false,
+)
+
+/** A piece of text worth keeping. */
+@Serializable
+data class Snippet(
+    val id: String,
+    val label: String,
+    val body: String,
+    val created: Long = System.currentTimeMillis(),
 )
 
 @Serializable
@@ -270,6 +287,60 @@ class ShauryaStore(private val context: Context) {
     fun removeNote(id: String) {
         notes.removeAll { it.id == id }
         save("notes.json", notes.toList())
+    }
+
+    // -----------------------------------------------------------------------
+    // Snippets
+    // -----------------------------------------------------------------------
+
+    var snippets: MutableList<Snippet> = load("snippets.json", emptyList<Snippet>()).toMutableList()
+        private set
+
+    fun saveSnippet(label: String, body: String): Snippet {
+        val snippet = Snippet(id = newId(), label = label.trim(), body = body)
+        snippets.add(0, snippet)
+        save("snippets.json", snippets.toList())
+        return snippet
+    }
+
+    fun removeSnippet(id: String) {
+        snippets.removeAll { it.id == id }
+        save("snippets.json", snippets.toList())
+    }
+
+    // -----------------------------------------------------------------------
+    // Shredder
+    // -----------------------------------------------------------------------
+
+    /**
+     * Erase everything this app has written.
+     *
+     * Deletes the files rather than overwriting them with empty documents, so
+     * nothing is left holding the shape of what was there. Settings survive
+     * on purpose: wiping your history should not also silently turn your ad
+     * blocker off, and a "delete everything" that resets your preferences is
+     * one people learn not to press.
+     *
+     * What it cannot reach is stated where it is offered: the WebView's own
+     * cookies and cache belong to Chromium and are cleared separately by the
+     * caller, and anything already sent to a website is gone from here in
+     * every sense except the one that matters.
+     */
+    fun shred() {
+        history.clear()
+        bookmarks.clear()
+        notes.clear()
+        snippets.clear()
+        shieldStats = ShieldStats()
+        listOf(
+            "history.json", "bookmarks.json", "notes.json", "snippets.json",
+            "shield-stats.json", "session.json",
+        ).forEach { name ->
+            runCatching {
+                File(root, name).delete()
+                File(root, "$name.tmp").delete()
+            }
+        }
     }
 
     // -----------------------------------------------------------------------

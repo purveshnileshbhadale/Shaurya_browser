@@ -49,6 +49,15 @@ import dev.shaurya.browser.media.PlaybackService
 import dev.shaurya.browser.ui.ShauryaTheme
 import dev.shaurya.browser.ui.AuroraBackground
 import dev.shaurya.browser.ui.BookmarksSheet
+import dev.shaurya.browser.ui.CiteSheet
+import dev.shaurya.browser.ui.DataSaverSheet
+import dev.shaurya.browser.ui.FocusSheet
+import dev.shaurya.browser.ui.JsonSheet
+import dev.shaurya.browser.ui.PrompterSheet
+import dev.shaurya.browser.ui.ReaderSheet
+import dev.shaurya.browser.ui.ShredderSheet
+import dev.shaurya.browser.ui.SnippetsSheet
+import dev.shaurya.browser.ui.SourceSheet
 import dev.shaurya.browser.ui.HistorySheet
 import dev.shaurya.browser.ui.LocalReducedMotion
 import dev.shaurya.browser.ui.ModeSheet
@@ -337,6 +346,15 @@ class MainActivity : ComponentActivity() {
         // what the feature is for — but it is one tap to mute, and the sheet
         // says which state it is in.
         var sharePageWithAi by remember { mutableStateOf(true) }
+        // Which tool sheet is open, by ModeTools id. One at a time.
+        var tool by remember { mutableStateOf<String?>(null) }
+        var readerArticle by remember { mutableStateOf<dev.shaurya.browser.tools.Reader.Article?>(null) }
+        var readerLoading by remember { mutableStateOf(false) }
+        var pageSource by remember { mutableStateOf<String?>(null) }
+        // A start timestamp, not a countdown: the phase is recomputed from
+        // elapsed time, so backgrounding the app does not lose the session.
+        var focusStartedAt by remember { mutableStateOf<Long?>(null) }
+        val snippets by model.snippets.collectAsStateWithLifecycle()
         val haptics = LocalHapticFeedback.current
         // Non-null while Shaurya Search results are on screen.
         var searchQuery by remember { mutableStateOf<String?>(null) }
@@ -358,13 +376,14 @@ class MainActivity : ComponentActivity() {
         // Back closes what is on top, then walks the page's history, and only
         // then leaves the app. Registering these as ordered handlers is also
         // what lets predictive back animate the right destination.
-        BackHandler(enabled = showTabs) { showTabs = false }
-        BackHandler(enabled = !showTabs && searchQuery != null) { searchQuery = null }
-        BackHandler(enabled = !showTabs && editingAddress) {
+        BackHandler(enabled = tool != null) { tool = null }
+        BackHandler(enabled = tool == null && showTabs) { showTabs = false }
+        BackHandler(enabled = tool == null && !showTabs && searchQuery != null) { searchQuery = null }
+        BackHandler(enabled = tool == null && !showTabs && editingAddress) {
             editingAddress = false
             addressText = active?.url.orEmpty()
         }
-        BackHandler(enabled = !showTabs && !editingAddress && active?.canGoBack == true) {
+        BackHandler(enabled = tool == null && !showTabs && !editingAddress && active?.canGoBack == true) {
             webViews[activeId]?.goBack()
         }
 
@@ -507,7 +526,11 @@ class MainActivity : ComponentActivity() {
                                         .map { TopSite(it.url, it.title) }
                                 },
                                 incognito = active?.incognito == true,
+                                mode = mode,
+                                tools = model.modeTools,
                                 onOpenSite = { navigate(activeId, it) },
+                                onOpenTool = { id -> tool = id },
+                                onOpenModes = { sheet = Sheet.MODES },
                             )
                         }
                     }
@@ -696,6 +719,95 @@ class MainActivity : ComponentActivity() {
             null -> Unit
         }
 
+        // The tools. Each is opened by id; the two that read the page fetch
+        // it here rather than at the tap, so the sheet owns its own loading
+        // state and a slow page cannot leave the tap feeling dead.
+        when (tool) {
+            "reader" -> {
+                LaunchedEffect(activeId) {
+                    readerLoading = true
+                    readerArticle = null
+                    extractArticle(activeId) { article ->
+                        readerArticle = article
+                        readerLoading = false
+                    }
+                }
+                ReaderSheet(
+                    article = readerArticle,
+                    loading = readerLoading,
+                    onDismiss = { tool = null },
+                )
+            }
+
+            "cite" -> CiteSheet(
+                url = active?.url.orEmpty(),
+                title = active?.title.orEmpty(),
+                onCopy = { copyToClipboard("Citation", it); toast("Copied") },
+                onDismiss = { tool = null },
+            )
+
+            "focus" -> FocusSheet(
+                startedAt = focusStartedAt,
+                onStart = { focusStartedAt = System.currentTimeMillis() },
+                onStop = { focusStartedAt = null },
+                onDismiss = { tool = null },
+            )
+
+            "snippets" -> SnippetsSheet(
+                snippets = snippets,
+                onSave = { label, body -> model.saveSnippet(label, body) },
+                onRemove = { model.removeSnippet(it) },
+                onCopy = { copyToClipboard("Snippet", it); toast("Copied") },
+                onDismiss = { tool = null },
+            )
+
+            "source" -> {
+                LaunchedEffect(activeId) {
+                    pageSource = null
+                    extractSource(activeId) { pageSource = it }
+                }
+                SourceSheet(
+                    html = pageSource,
+                    onCopy = { copyToClipboard("Page source", it); toast("Copied") },
+                    onDismiss = { tool = null },
+                )
+            }
+
+            "json" -> JsonSheet(
+                onCopy = { copyToClipboard("JSON", it); toast("Copied") },
+                onDismiss = { tool = null },
+            )
+
+            "prompter" -> PrompterSheet(onDismiss = { tool = null })
+
+            "datasaver" -> DataSaverSheet(
+                enabled = settings.blockImages,
+                blocked = stats.blocked,
+                onToggle = { on ->
+                    model.updateSettings { it.copy(blockImages = on) }
+                    // Apply to every tab that is already open, not just the
+                    // next one created.
+                    webViews.values.forEach { view ->
+                        view.settings.loadsImagesAutomatically = !on
+                    }
+                },
+                onDismiss = { tool = null },
+            )
+
+            "shredder", "panic" -> ShredderSheet(
+                panic = tool == "panic",
+                onConfirm = {
+                    val wasPanic = tool == "panic"
+                    tool = null
+                    shredEverything()
+                    if (wasPanic) finishAndRemoveTask() else toast("Erased")
+                },
+                onDismiss = { tool = null },
+            )
+
+            else -> Unit
+        }
+
         if (assistant.open) {
             AssistantSheet(
                 state = assistant,
@@ -815,7 +927,9 @@ class MainActivity : ComponentActivity() {
             javaScriptEnabled = true
             domStorageEnabled = !incognito
             databaseEnabled = !incognito
-            loadsImagesAutomatically = true
+            // Data saver. Read at configure time and again when the setting
+            // changes, so an already-open tab is not left ignoring it.
+            loadsImagesAutomatically = !model.settings.value.blockImages
             useWideViewPort = true
             loadWithOverviewMode = true
             builtInZoomControls = true
@@ -993,6 +1107,69 @@ class MainActivity : ComponentActivity() {
             """.trimIndent(),
             null,
         )
+    }
+
+    /** Extract the article for reader view, on the page that owns the DOM. */
+    private fun extractArticle(
+        tabId: Long,
+        callback: (dev.shaurya.browser.tools.Reader.Article?) -> Unit,
+    ) {
+        val view = webViews[tabId] ?: return callback(null)
+        view.evaluateJavascript(dev.shaurya.browser.tools.Reader.EXTRACT_JS) { raw ->
+            val article = runCatching {
+                // evaluateJavascript hands back a JSON-encoded string whose
+                // content is itself JSON, so it unwraps twice.
+                val inner = org.json.JSONTokener(raw).nextValue() as? String ?: return@runCatching null
+                val obj = org.json.JSONObject(inner)
+                dev.shaurya.browser.tools.Reader.Article(
+                    title = obj.optString("title"),
+                    byline = obj.optString("byline"),
+                    paragraphs = dev.shaurya.browser.tools.Reader.paragraphs(obj.optString("text")),
+                )
+            }.getOrNull()
+            callback(article)
+        }
+    }
+
+    /** The live DOM, which is not the same thing as the served HTML. */
+    private fun extractSource(tabId: Long, callback: (String?) -> Unit) {
+        val view = webViews[tabId] ?: return callback(null)
+        view.evaluateJavascript(
+            "(function(){return document.documentElement ? " +
+                "document.documentElement.outerHTML : '';})()"
+        ) { raw ->
+            callback(runCatching { org.json.JSONTokener(raw).nextValue() as? String }.getOrNull())
+        }
+    }
+
+    private fun copyToClipboard(label: String, text: String) {
+        val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(label, text))
+    }
+
+    private fun toast(message: String) {
+        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Erase everything, including what the store cannot reach.
+     *
+     * The stored files are the model's; cookies, cache and web storage belong
+     * to Chromium and have to be cleared through its own APIs, or a "delete
+     * everything" would leave the thing most people mean by tracking intact.
+     */
+    private fun shredEverything() {
+        model.shred()
+        android.webkit.CookieManager.getInstance().removeAllCookies(null)
+        android.webkit.CookieManager.getInstance().flush()
+        android.webkit.WebStorage.getInstance().deleteAllData()
+        webViews.values.forEach { view ->
+            view.clearHistory()
+            view.clearCache(true)
+            view.clearFormData()
+        }
+        thumbnails.clear()
+        thumbnailOrder.clear()
     }
 
     /** Pull the page's visible text for the assistant. */

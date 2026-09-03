@@ -122,6 +122,39 @@ class BrowserViewModel(app: Application) : AndroidViewModel(app) {
 
     val aiIsLocal: Boolean get() = dev.shaurya.browser.ai.AiClient.isLocal(store.settings.aiEndpoint)
 
+    // -- tools ---------------------------------------------------------------
+
+    private val _snippets = MutableStateFlow(store.snippets.toList())
+    val snippets: StateFlow<List<dev.shaurya.browser.data.Snippet>> = _snippets.asStateFlow()
+
+    fun saveSnippet(label: String, body: String) {
+        if (body.isBlank()) return
+        store.saveSnippet(label.ifBlank { body.take(30) }, body)
+        _snippets.value = store.snippets.toList()
+    }
+
+    fun removeSnippet(id: String) {
+        store.removeSnippet(id)
+        _snippets.value = store.snippets.toList()
+    }
+
+    /** The tools the active mode puts on the home page. */
+    val modeTools: List<dev.shaurya.browser.modes.Tool>
+        get() = dev.shaurya.browser.modes.ModeTools.toolsFor(_mode.value.id)
+
+    /**
+     * Erase everything stored locally, and reset the counters that describe
+     * it. The WebView's own cookies and cache are Chromium's, not ours, so
+     * the caller clears those — this cannot reach them.
+     */
+    fun shred() {
+        store.shred()
+        _history.value = emptyList()
+        _bookmarks.value = emptyList()
+        _snippets.value = emptyList()
+        _stats.value = store.shieldStats
+    }
+
     /** Most-visited sites for the new tab page. */
     fun topSites(): List<dev.shaurya.browser.ui.TopSite> =
         store.topSites().map { dev.shaurya.browser.ui.TopSite(it.url, it.title) }
